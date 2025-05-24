@@ -2,38 +2,16 @@ import Image from "next/image"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function GalleryPage() {
-  // Sample gallery images
+  // Real gallery images
   const images = {
-    venue: [
-      "/placeholder.svg?height=600&width=800",
-      "/placeholder.svg?height=800&width=600",
-      "/placeholder.svg?height=600&width=800",
-      "/placeholder.svg?height=800&width=600",
-      "/placeholder.svg?height=600&width=800",
-      "/placeholder.svg?height=800&width=600",
-      "/placeholder.svg?height=600&width=800",
-      "/placeholder.svg?height=800&width=600",
-    ],
+    venue: ["/images/gallery/event5.jpeg", "/images/gallery/event7.jpeg"],
     events: [
-      "/placeholder.svg?height=600&width=800",
-      "/placeholder.svg?height=800&width=600",
-      "/placeholder.svg?height=600&width=800",
-      "/placeholder.svg?height=800&width=600",
-      "/placeholder.svg?height=600&width=800",
-      "/placeholder.svg?height=800&width=600",
-      "/placeholder.svg?height=600&width=800",
-      "/placeholder.svg?height=800&width=600",
+      "/images/gallery/event1.jpeg",
+      "/images/gallery/event3.jpeg",
+      "/images/gallery/event4.jpeg",
+      "/images/gallery/event6.jpeg",
     ],
-    vip: [
-      "/placeholder.svg?height=600&width=800",
-      "/placeholder.svg?height=800&width=600",
-      "/placeholder.svg?height=600&width=800",
-      "/placeholder.svg?height=800&width=600",
-      "/placeholder.svg?height=600&width=800",
-      "/placeholder.svg?height=800&width=600",
-      "/placeholder.svg?height=600&width=800",
-      "/placeholder.svg?height=800&width=600",
-    ],
+    vip: ["/images/gallery/event2.jpeg", "/images/gallery/event7.jpeg"],
   }
 
   return (
@@ -42,8 +20,8 @@ export default function GalleryPage() {
       <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <Image
-            src="/placeholder.svg?height=800&width=1920"
-            alt="Gallery"
+            src="/images/gallery/event5.jpeg"
+            alt="Coded Nightclub Gallery"
             fill
             className="object-cover brightness-50"
             priority
@@ -52,7 +30,7 @@ export default function GalleryPage() {
         <div className="container relative z-10 text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Gallery</h1>
           <p className="text-xl max-w-3xl mx-auto text-gray-300">
-            Take a visual tour of our venue, events, and unforgettable moments
+            Experience the energy and excitement of Coded Nightclub events
           </p>
         </div>
       </section>
@@ -60,7 +38,7 @@ export default function GalleryPage() {
       {/* Gallery Section */}
       <section className="py-16">
         <div className="container">
-          <Tabs defaultValue="venue" className="space-y-8">
+          <Tabs defaultValue="events" className="space-y-8">
             <TabsList className="w-full max-w-md mx-auto grid grid-cols-3">
               <TabsTrigger value="venue">The Venue</TabsTrigger>
               <TabsTrigger value="events">Events</TabsTrigger>

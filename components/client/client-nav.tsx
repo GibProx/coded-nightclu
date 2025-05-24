@@ -52,8 +52,8 @@ export function ClientNav() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center space-x-2">
-          <Icons.logo className="h-8 w-8" />
+        <Link href="/" className="flex items-center space-x-3">
+          <Icons.logo className="h-12 w-12" />
           <span className="text-xl font-bold tracking-wider">CODED</span>
         </Link>
 
@@ -102,9 +102,9 @@ export function ClientNav() {
             </Button>
           </SheetTrigger>
           <SheetContent side="right">
-            <div className="flex items-center space-x-2 mb-6">
-              <Icons.logo className="h-6 w-6" />
-              <span className="font-bold">CODED</span>
+            <div className="flex items-center space-x-3 mb-6">
+              <Icons.logo className="h-10 w-10" />
+              <span className="font-bold text-lg">CODED</span>
             </div>
             <nav className="flex flex-col gap-4 mt-8">
               {routes.map((route) => (

@@ -1,144 +1,152 @@
 "use client"
 
 import type React from "react"
+
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
 import {
   BarChart3,
-  Users,
-  CalendarClock,
-  UserCog,
-  Package,
+  Calendar,
   CreditCard,
+  Home,
   Settings,
   ShieldAlert,
-  TicketCheck,
-  Menu,
+  ShoppingCart,
+  Tag,
+  Ticket,
+  User,
+  Users,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
-interface SideNavProps extends React.HTMLAttributes<HTMLElement> {
-  className?: string
-}
+interface SideNavProps extends React.HTMLAttributes<HTMLDivElement> {}
 
-export function SideNav({ className }: SideNavProps) {
+export function SideNav({ className, ...props }: SideNavProps) {
   const pathname = usePathname()
-  const [open, setOpen] = useState(false)
 
-  const navItems = [
-    {
-      title: "Dashboard",
-      href: "/dashboard",
-      icon: <BarChart3 className="h-5 w-5" />,
-    },
-    {
-      title: "Guest Management",
-      href: "/guests",
-      icon: <Users className="h-5 w-5" />,
-    },
-    {
-      title: "Reservations",
-      href: "/reservations",
-      icon: <CalendarClock className="h-5 w-5" />,
-    },
-    {
-      title: "Staff",
-      href: "/staff",
-      icon: <UserCog className="h-5 w-5" />,
-    },
-    {
-      title: "Inventory",
-      href: "/inventory",
-      icon: <Package className="h-5 w-5" />,
-    },
-    {
-      title: "Payments",
-      href: "/payments",
-      icon: <CreditCard className="h-5 w-5" />,
-    },
-    {
-      title: "Ticketing",
-      href: "/ticketing",
-      icon: <TicketCheck className="h-5 w-5" />,
-    },
-    {
-      title: "Security Log",
-      href: "/security",
-      icon: <ShieldAlert className="h-5 w-5" />,
-    },
-    {
-      title: "Settings",
-      href: "/settings",
-      icon: <Settings className="h-5 w-5" />,
-    },
-  ]
+  const isActive = (path: string) => {
+    return pathname?.startsWith(path)
+  }
 
-  // Desktop sidebar
-  const DesktopSidebar = (
-    <nav className={cn("hidden border-r bg-background lg:block lg:w-64", className)}>
+  return (
+    <div className={cn("pb-12", className)} {...props}>
       <div className="space-y-4 py-4">
         <div className="px-4 py-2">
-          <h2 className="mb-2 px-2 text-lg font-semibold tracking-tight">Main Menu</h2>
+          <h2 className="mb-2 px-2 text-lg font-semibold tracking-tight">Management</h2>
           <div className="space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                  pathname === item.href ? "bg-accent text-accent-foreground" : "transparent",
-                )}
-              >
-                {item.icon}
-                <span className="ml-3">{item.title}</span>
-              </Link>
-            ))}
+            <Link
+              href="/dashboard"
+              className={cn(
+                "flex items-center rounded-md px-2 py-2 hover:bg-accent hover:text-accent-foreground",
+                isActive("/dashboard") && !isActive("/dashboard/") && "bg-accent text-accent-foreground",
+              )}
+            >
+              <Home className="mr-2 h-4 w-4" />
+              <span>Dashboard</span>
+            </Link>
+            <Link
+              href="/dashboard/reservations"
+              className={cn(
+                "flex items-center rounded-md px-2 py-2 hover:bg-accent hover:text-accent-foreground",
+                isActive("/dashboard/reservations") && "bg-accent text-accent-foreground",
+              )}
+            >
+              <Calendar className="mr-2 h-4 w-4" />
+              <span>Reservations</span>
+            </Link>
+            <Link
+              href="/dashboard/ticketing"
+              className={cn(
+                "flex items-center rounded-md px-2 py-2 hover:bg-accent hover:text-accent-foreground",
+                isActive("/dashboard/ticketing") && "bg-accent text-accent-foreground",
+              )}
+            >
+              <Ticket className="mr-2 h-4 w-4" />
+              <span>Ticketing</span>
+            </Link>
+            <Link
+              href="/dashboard/guests"
+              className={cn(
+                "flex items-center rounded-md px-2 py-2 hover:bg-accent hover:text-accent-foreground",
+                isActive("/dashboard/guests") && "bg-accent text-accent-foreground",
+              )}
+            >
+              <Users className="mr-2 h-4 w-4" />
+              <span>Guests</span>
+            </Link>
+            <Link
+              href="/dashboard/staff"
+              className={cn(
+                "flex items-center rounded-md px-2 py-2 hover:bg-accent hover:text-accent-foreground",
+                isActive("/dashboard/staff") && "bg-accent text-accent-foreground",
+              )}
+            >
+              <User className="mr-2 h-4 w-4" />
+              <span>Staff</span>
+            </Link>
+            <Link
+              href="/dashboard/payments"
+              className={cn(
+                "flex items-center rounded-md px-2 py-2 hover:bg-accent hover:text-accent-foreground",
+                isActive("/dashboard/payments") && "bg-accent text-accent-foreground",
+              )}
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              <span>Payments</span>
+            </Link>
+            <Link
+              href="/dashboard/orders"
+              className={cn(
+                "flex items-center rounded-md px-2 py-2 hover:bg-accent hover:text-accent-foreground",
+                isActive("/dashboard/orders") && "bg-accent text-accent-foreground",
+              )}
+            >
+              <ShoppingCart className="mr-2 h-4 w-4" />
+              <span>Orders</span>
+            </Link>
+            <Link
+              href="/dashboard/inventory"
+              className={cn(
+                "flex items-center rounded-md px-2 py-2 hover:bg-accent hover:text-accent-foreground",
+                isActive("/dashboard/inventory") && "bg-accent text-accent-foreground",
+              )}
+            >
+              <Tag className="mr-2 h-4 w-4" />
+              <span>Inventory</span>
+            </Link>
+            <Link
+              href="/dashboard/security"
+              className={cn(
+                "flex items-center rounded-md px-2 py-2 hover:bg-accent hover:text-accent-foreground",
+                isActive("/dashboard/security") && "bg-accent text-accent-foreground",
+              )}
+            >
+              <ShieldAlert className="mr-2 h-4 w-4" />
+              <span>Security</span>
+            </Link>
+            <Link
+              href="/dashboard/analytics"
+              className={cn(
+                "flex items-center rounded-md px-2 py-2 hover:bg-accent hover:text-accent-foreground",
+                isActive("/dashboard/analytics") && "bg-accent text-accent-foreground",
+              )}
+            >
+              <BarChart3 className="mr-2 h-4 w-4" />
+              <span>Analytics</span>
+            </Link>
+            <Link
+              href="/dashboard/settings"
+              className={cn(
+                "flex items-center rounded-md px-2 py-2 hover:bg-accent hover:text-accent-foreground",
+                isActive("/dashboard/settings") && "bg-accent text-accent-foreground",
+              )}
+            >
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Settings</span>
+            </Link>
           </div>
         </div>
       </div>
-    </nav>
-  )
-
-  // Mobile sidebar (using Sheet component)
-  const MobileSidebar = (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="lg:hidden">
-          <Menu className="h-6 w-6" />
-          <span className="sr-only">Toggle Menu</span>
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="left" className="w-[240px] sm:w-[300px]">
-        <div className="px-2 py-6">
-          <h2 className="mb-4 px-2 text-lg font-semibold tracking-tight">Main Menu</h2>
-          <div className="space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setOpen(false)}
-                className={cn(
-                  "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                  pathname === item.href ? "bg-accent text-accent-foreground" : "transparent",
-                )}
-              >
-                {item.icon}
-                <span className="ml-3">{item.title}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  )
-
-  return (
-    <>
-      {DesktopSidebar}
-      {MobileSidebar}
-    </>
+    </div>
   )
 }

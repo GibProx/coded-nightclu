@@ -7,16 +7,7 @@ import { LayoutDashboard, Store } from "lucide-react"
 
 export function InterfaceSwitcher() {
   const pathname = usePathname()
-  const isAdmin =
-    pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/guests") ||
-    pathname.startsWith("/staff") ||
-    pathname.startsWith("/inventory") ||
-    pathname.startsWith("/payments") ||
-    pathname.startsWith("/ticketing") ||
-    pathname.startsWith("/security") ||
-    pathname.startsWith("/settings") ||
-    (pathname.startsWith("/reservations") && pathname.includes("admin"))
+  const isAdmin = pathname.startsWith("/dashboard") || pathname.startsWith("/admin")
 
   return (
     <div className="fixed bottom-4 right-4 z-50">

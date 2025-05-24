@@ -23,23 +23,23 @@ export function AdminHeader() {
     },
     {
       title: "Guests",
-      href: "/guests",
-      active: pathname === "/guests",
+      href: "/dashboard/guests",
+      active: pathname === "/dashboard/guests",
     },
     {
       title: "Reservations",
-      href: "/reservations",
-      active: pathname === "/reservations",
+      href: "/dashboard/reservations",
+      active: pathname === "/dashboard/reservations",
     },
     {
       title: "Staff",
-      href: "/staff",
-      active: pathname === "/staff",
+      href: "/dashboard/staff",
+      active: pathname === "/dashboard/staff",
     },
     {
       title: "Inventory",
-      href: "/inventory",
-      active: pathname === "/inventory",
+      href: "/dashboard/inventory",
+      active: pathname === "/dashboard/inventory",
     },
   ]
 
@@ -54,8 +54,8 @@ export function AdminHeader() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-[240px] sm:w-[300px]">
-            <div className="flex items-center space-x-2 mb-6">
-              <Icons.logo className="h-6 w-6" />
+            <div className="flex items-center space-x-3 mb-6">
+              <Icons.logo className="h-10 w-10" />
               <span className="font-bold">CODED ADMIN</span>
             </div>
             <nav className="flex flex-col space-y-1">
@@ -76,8 +76,8 @@ export function AdminHeader() {
           </SheetContent>
         </Sheet>
 
-        <Link href="/dashboard" className="flex items-center space-x-2 mr-6">
-          <Icons.logo className="h-6 w-6" />
+        <Link href="/dashboard" className="flex items-center space-x-3 mr-6">
+          <Icons.logo className="h-10 w-10" />
           <span className="hidden font-bold sm:inline-block">CODED ADMIN</span>
         </Link>
 
