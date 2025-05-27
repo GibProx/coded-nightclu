@@ -49,13 +49,48 @@ export default function EventsSetupPage() {
     }
   }
 
+  async function handleSetupFatsoma() {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const result = await setupDatabase("lib/sql/update-events-fatsoma.sql")
+
+      if (result.success) {
+        setSetupComplete(true)
+        toast({
+          title: "Success",
+          description: "Fatsoma integration has been added successfully.",
+        })
+      } else {
+        setError(result.error || "Failed to add Fatsoma integration")
+        toast({
+          title: "Error",
+          description: result.error || "Failed to add Fatsoma integration",
+          variant: "destructive",
+        })
+      }
+    } catch (err) {
+      console.error("Error setting up Fatsoma integration:", err)
+      setError("An unexpected error occurred")
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while adding Fatsoma integration",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="container mx-auto py-10">
       <h1 className="text-3xl font-bold mb-6">Events Setup</h1>
 
       <Tabs defaultValue="setup" className="w-full">
-        <TabsList className="grid w-full grid-cols-1 md:grid-cols-3">
+        <TabsList className="grid w-full grid-cols-1 md:grid-cols-2">
           <TabsTrigger value="setup">Database Setup</TabsTrigger>
+          <TabsTrigger value="fatsoma">Fatsoma Integration</TabsTrigger>
         </TabsList>
 
         <TabsContent value="setup" className="space-y-4 mt-6">
@@ -93,6 +128,43 @@ export default function EventsSetupPage() {
             <CardFooter>
               <Button onClick={handleSetupEvents} disabled={isLoading || setupComplete} className="w-full md:w-auto">
                 {isLoading ? "Updating..." : setupComplete ? "Updated" : "Update Events Database"}
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+        <TabsContent value="fatsoma" className="space-y-4 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Add Fatsoma Integration</CardTitle>
+              <CardDescription>Add Fatsoma integration fields to support external ticketing</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {error && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {setupComplete ? (
+                <Alert className="mb-4 bg-green-50 border-green-200">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertTitle className="text-green-800">Setup Complete</AlertTitle>
+                  <AlertDescription className="text-green-700">
+                    Fatsoma integration has been added successfully. You can now use external ticketing features.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <p className="text-sm text-muted-foreground mb-4">
+                  This will add Fatsoma integration fields to your events table, allowing you to redirect customers to
+                  Fatsoma for ticket purchases.
+                </p>
+              )}
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleSetupFatsoma} disabled={isLoading || setupComplete} className="w-full md:w-auto">
+                {isLoading ? "Adding..." : setupComplete ? "Added" : "Add Fatsoma Integration"}
               </Button>
             </CardFooter>
           </Card>

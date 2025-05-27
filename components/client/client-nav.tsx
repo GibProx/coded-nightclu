@@ -7,15 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Icons } from "@/components/icons"
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, User } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Menu } from "lucide-react"
 
 export function ClientNav() {
   const pathname = usePathname()
@@ -49,6 +41,24 @@ export function ClientNav() {
     },
   ]
 
+  // Check if we're on an admin page
+  const isAdminPage =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/guests") ||
+    pathname.startsWith("/staff") ||
+    pathname.startsWith("/inventory") ||
+    pathname.startsWith("/payments") ||
+    pathname.startsWith("/ticketing") ||
+    pathname.startsWith("/security") ||
+    pathname.startsWith("/settings") ||
+    (pathname.startsWith("/reservations") && pathname.includes("admin"))
+
+  // Don't render navigation on admin pages
+  if (isAdminPage) {
+    return null
+  }
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
@@ -72,25 +82,8 @@ export function ClientNav() {
             </Link>
           ))}
           <Button asChild>
-            <Link href="/tickets">Buy Tickets</Link>
+            <Link href="/events">Events</Link>
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <User className="h-5 w-5" />
-                <span className="sr-only">User menu</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>My Tickets</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Log out</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </nav>
 
         {/* Mobile Navigation */}

@@ -5,19 +5,7 @@ import type React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import {
-  BarChart3,
-  Calendar,
-  CreditCard,
-  Home,
-  Settings,
-  ShieldAlert,
-  ShoppingCart,
-  Tag,
-  Ticket,
-  User,
-  Users,
-} from "lucide-react"
+import { Calendar, CreditCard, Home, Settings, ShieldAlert, ShoppingCart, Tag, Ticket, User, Users } from "lucide-react"
 
 interface SideNavProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -123,16 +111,6 @@ export function SideNav({ className, ...props }: SideNavProps) {
             >
               <ShieldAlert className="mr-2 h-4 w-4" />
               <span>Security</span>
-            </Link>
-            <Link
-              href="/dashboard/analytics"
-              className={cn(
-                "flex items-center rounded-md px-2 py-2 hover:bg-accent hover:text-accent-foreground",
-                isActive("/dashboard/analytics") && "bg-accent text-accent-foreground",
-              )}
-            >
-              <BarChart3 className="mr-2 h-4 w-4" />
-              <span>Analytics</span>
             </Link>
             <Link
               href="/dashboard/settings"

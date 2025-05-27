@@ -7,6 +7,41 @@ export interface Staff {
   shift_pattern?: string | null
   active: boolean
   avatar_url?: string | null
+  // User management fields
+  user_id?: string | null
+  system_access?: boolean
+  system_role?: "admin" | "manager" | "staff" | "viewer" | null
+  permissions?: {
+    can_view_dashboard?: boolean
+    can_manage_guests?: boolean
+    can_manage_reservations?: boolean
+    can_manage_events?: boolean
+    can_manage_inventory?: boolean
+    can_manage_staff?: boolean
+    can_view_analytics?: boolean
+    can_manage_security?: boolean
+  } | null
+  created_at: string
+  updated_at: string
+}
+
+export interface UserProfile {
+  id: string
+  email: string
+  name?: string | null
+  role: "admin" | "manager" | "staff" | "viewer"
+  staff_id?: string | null
+  permissions?: {
+    can_view_dashboard?: boolean
+    can_manage_guests?: boolean
+    can_manage_reservations?: boolean
+    can_manage_events?: boolean
+    can_manage_inventory?: boolean
+    can_manage_staff?: boolean
+    can_view_analytics?: boolean
+    can_manage_security?: boolean
+  } | null
+  avatar_url?: string | null
   created_at: string
   updated_at: string
 }
@@ -36,6 +71,11 @@ export interface Event {
   ticket_price: number
   status: string
   image_url?: string | null
+  // Fatsoma integration fields
+  fatsoma_event_id?: string | null
+  fatsoma_url?: string | null
+  external_ticketing?: boolean
+  ticketing_provider?: string | null
   created_at: string
   updated_at: string
 }
@@ -143,6 +183,7 @@ export interface Database {
   payments: Payment[]
   security_logs: SecurityLog[]
   settings: Settings[]
+  user_profiles: UserProfile[]
 }
 
 export type TableName = keyof Database

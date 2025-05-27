@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { format } from "date-fns"
-import { MoreHorizontal, Edit, Trash2 } from "lucide-react"
+import { MoreHorizontal, Edit, Trash2, ExternalLink } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,9 @@ type Event = {
   ticket_price: number
   status: string
   image_url?: string
+  external_ticketing?: boolean
+  ticketing_provider?: string
+  fatsoma_url?: string
   created_at: string
   updated_at: string
 }
@@ -49,6 +52,12 @@ export function EventTable({ events }: EventTableProps) {
 
   const handleEdit = (event: Event) => {
     router.push(`/dashboard/ticketing/${event.id}/edit`)
+  }
+
+  const handleViewFatsoma = (event: Event) => {
+    if (event.fatsoma_url) {
+      window.open(event.fatsoma_url, "_blank", "noopener,noreferrer")
+    }
   }
 
   const handleDelete = async () => {
@@ -95,6 +104,18 @@ export function EventTable({ events }: EventTableProps) {
     }
   }
 
+  const getTicketingBadge = (event: Event) => {
+    if (event.external_ticketing) {
+      return (
+        <Badge className="bg-green-600 hover:bg-green-700">
+          <ExternalLink className="w-3 h-3 mr-1" />
+          {event.ticketing_provider || "External"}
+        </Badge>
+      )
+    }
+    return <Badge variant="outline">Internal</Badge>
+  }
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -113,13 +134,14 @@ export function EventTable({ events }: EventTableProps) {
             <TableHead>Capacity</TableHead>
             <TableHead>Price</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Ticketing</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {events.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                 No events found
               </TableCell>
             </TableRow>
@@ -132,6 +154,7 @@ export function EventTable({ events }: EventTableProps) {
                 <TableCell>{event.capacity}</TableCell>
                 <TableCell>{formatCurrency(event.ticket_price)}</TableCell>
                 <TableCell>{getStatusBadge(event.status)}</TableCell>
+                <TableCell>{getTicketingBadge(event)}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -145,6 +168,12 @@ export function EventTable({ events }: EventTableProps) {
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
+                      {event.external_ticketing && event.fatsoma_url && (
+                        <DropdownMenuItem onClick={() => handleViewFatsoma(event)}>
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          View on Fatsoma
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem
                         onClick={() => confirmDelete(event)}
                         className="text-destructive focus:text-destructive"
@@ -166,7 +195,7 @@ export function EventTable({ events }: EventTableProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the event &quot;{eventToDelete?.name}&quot;. This action cannot be undone.
+              This will permanently delete the event "{eventToDelete?.name}". This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

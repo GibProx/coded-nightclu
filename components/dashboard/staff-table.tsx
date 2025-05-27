@@ -14,9 +14,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Pencil, Trash2, UserPlus } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, UserPlus, Shield, Key } from "lucide-react"
 import type { Staff } from "@/types/database"
-import { deleteStaffMember } from "@/app/actions/staff-actions"
+import { deleteStaffMember, resetStaffPassword } from "@/app/actions/staff-actions"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +27,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { toast } from "@/components/ui/use-toast"
 
 interface StaffTableProps {
@@ -36,8 +46,12 @@ interface StaffTableProps {
 export function StaffTable({ staff }: StaffTableProps) {
   const router = useRouter()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false)
   const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null)
+  const [staffForPassword, setStaffForPassword] = useState<Staff | null>(null)
+  const [newPassword, setNewPassword] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isResettingPassword, setIsResettingPassword] = useState(false)
 
   const handleEdit = (staffId: string) => {
     router.push(`/dashboard/staff/${staffId}/edit`)
@@ -46,6 +60,12 @@ export function StaffTable({ staff }: StaffTableProps) {
   const handleDelete = (staff: Staff) => {
     setStaffToDelete(staff)
     setIsDeleteDialogOpen(true)
+  }
+
+  const handleResetPassword = (staff: Staff) => {
+    setStaffForPassword(staff)
+    setNewPassword("")
+    setIsPasswordDialogOpen(true)
   }
 
   const confirmDelete = async () => {
@@ -58,7 +78,7 @@ export function StaffTable({ staff }: StaffTableProps) {
       if (result.success) {
         toast({
           title: "Staff member deleted",
-          description: "The staff member has been deleted successfully.",
+          description: "The staff member and their user account have been deleted successfully.",
         })
         router.refresh()
       } else {
@@ -75,6 +95,36 @@ export function StaffTable({ staff }: StaffTableProps) {
       setIsDeleting(false)
       setIsDeleteDialogOpen(false)
       setStaffToDelete(null)
+    }
+  }
+
+  const confirmPasswordReset = async () => {
+    if (!staffForPassword || !newPassword) return
+
+    setIsResettingPassword(true)
+    try {
+      const result = await resetStaffPassword(staffForPassword.id, newPassword)
+
+      if (result.success) {
+        toast({
+          title: "Password reset",
+          description: "The staff member's password has been reset successfully.",
+        })
+      } else {
+        throw new Error(result.error || "Failed to reset password")
+      }
+    } catch (error) {
+      console.error("Error resetting password:", error)
+      toast({
+        title: "Error",
+        description: "There was an error resetting the password.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsResettingPassword(false)
+      setIsPasswordDialogOpen(false)
+      setStaffForPassword(null)
+      setNewPassword("")
     }
   }
 
@@ -102,6 +152,7 @@ export function StaffTable({ staff }: StaffTableProps) {
             <TableHead>Role</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Phone</TableHead>
+            <TableHead>System Access</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -122,7 +173,21 @@ export function StaffTable({ staff }: StaffTableProps) {
               <TableCell>{staffMember.email}</TableCell>
               <TableCell>{staffMember.phone || "—"}</TableCell>
               <TableCell>
-                <Badge variant={staffMember.active ? "success" : "secondary"}>
+                <div className="flex items-center gap-2">
+                  {staffMember.system_access ? (
+                    <>
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <Shield className="h-3 w-3" />
+                        {staffMember.system_role || "staff"}
+                      </Badge>
+                    </>
+                  ) : (
+                    <Badge variant="outline">No Access</Badge>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell>
+                <Badge variant={staffMember.active ? "default" : "secondary"}>
                   {staffMember.active ? "Active" : "Inactive"}
                 </Badge>
               </TableCell>
@@ -141,6 +206,12 @@ export function StaffTable({ staff }: StaffTableProps) {
                       <Pencil className="mr-2 h-4 w-4" />
                       Edit
                     </DropdownMenuItem>
+                    {staffMember.system_access && staffMember.user_id && (
+                      <DropdownMenuItem onClick={() => handleResetPassword(staffMember)}>
+                        <Key className="mr-2 h-4 w-4" />
+                        Reset Password
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                       onClick={() => handleDelete(staffMember)}
                       className="text-destructive focus:text-destructive"
@@ -156,12 +227,13 @@ export function StaffTable({ staff }: StaffTableProps) {
         </TableBody>
       </Table>
 
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete {staffToDelete?.name}. This action cannot be undone.
+              This will permanently delete {staffToDelete?.name} and their user account. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -176,6 +248,38 @@ export function StaffTable({ staff }: StaffTableProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Password Reset Dialog */}
+      <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              Enter a new password for {staffForPassword?.name}. They will be required to change it on next login.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">New Password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPasswordDialogOpen(false)} disabled={isResettingPassword}>
+              Cancel
+            </Button>
+            <Button onClick={confirmPasswordReset} disabled={isResettingPassword || !newPassword}>
+              {isResettingPassword ? "Resetting..." : "Reset Password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

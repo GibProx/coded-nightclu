@@ -20,8 +20,11 @@ const eventSchema = z.object({
   dj: z.string().optional(),
   main_image: z.string().optional(),
   gallery_images: z.string().optional(),
-  ticket_types: z.string().optional(),
-  ticket_categories: z.string().optional(),
+  // Fatsoma integration fields
+  external_ticketing: z.coerce.boolean().default(true),
+  ticketing_provider: z.string().default("fatsoma"),
+  fatsoma_event_id: z.string().optional(),
+  fatsoma_url: z.string().optional(),
 })
 
 export type EventFormData = z.infer<typeof eventSchema>
@@ -154,8 +157,10 @@ export async function createEvent(formData: FormData) {
     dj: (formData.get("dj") as string) || "",
     main_image: (formData.get("main_image") as string) || "",
     gallery_images: (formData.get("gallery_images") as string) || "[]",
-    ticket_types: (formData.get("ticket_types") as string) || "[]",
-    ticket_categories: (formData.get("ticket_categories") as string) || "[]",
+    external_ticketing: formData.get("external_ticketing") === "true",
+    ticketing_provider: (formData.get("ticketing_provider") as string) || "fatsoma",
+    fatsoma_event_id: (formData.get("fatsoma_event_id") as string) || "",
+    fatsoma_url: (formData.get("fatsoma_url") as string) || "",
   }
 
   try {
@@ -173,6 +178,8 @@ export async function createEvent(formData: FormData) {
       capacity: validatedData.capacity,
       ticket_price: validatedData.ticket_price,
       status: validatedData.status,
+      external_ticketing: validatedData.external_ticketing,
+      ticketing_provider: validatedData.ticketing_provider,
     }
 
     // Only add optional fields if they have values
@@ -180,26 +187,55 @@ export async function createEvent(formData: FormData) {
     if (validatedData.main_image) dataToInsert.main_image = validatedData.main_image
     if (validatedData.long_description) dataToInsert.long_description = validatedData.long_description
     if (validatedData.gallery_images) dataToInsert.gallery_images = validatedData.gallery_images
-    if (validatedData.ticket_types) dataToInsert.ticket_types = validatedData.ticket_types
-    if (validatedData.ticket_categories) dataToInsert.ticket_categories = validatedData.ticket_categories
+    if (validatedData.fatsoma_event_id) dataToInsert.fatsoma_event_id = validatedData.fatsoma_event_id
+    if (validatedData.fatsoma_url) dataToInsert.fatsoma_url = validatedData.fatsoma_url
 
     // Insert into database
-    const { data, error } = await supabase.from("events").insert([dataToInsert]).select()
+    try {
+      const { data, error } = await supabase.from("events").insert([dataToInsert]).select()
 
-    if (error) {
-      console.error("Error creating event:", error)
-      return { success: false, error: error.message }
-    }
+      if (error) {
+        // Check if the error is related to missing columns
+        if (
+          error.message.includes("external_ticketing") ||
+          error.message.includes("fatsoma_") ||
+          error.message.includes("ticketing_provider")
+        ) {
+          return {
+            success: false,
+            error: "Database schema needs to be updated. Please run the Fatsoma integration setup first.",
+            needsSetup: true,
+          }
+        }
+        console.error("Error creating event:", error)
+        return { success: false, error: error.message }
+      }
 
-    // Revalidate the path but don't redirect here
-    revalidatePath("/dashboard/ticketing")
-    revalidatePath("/events")
+      // Revalidate the path but don't redirect here
+      revalidatePath("/dashboard/ticketing")
+      revalidatePath("/events")
 
-    // Return success with the created event data
-    return {
-      success: true,
-      data: data[0],
-      message: "Event created successfully",
+      // Return success with the created event data
+      return {
+        success: true,
+        data: data[0],
+        message: "Event created successfully",
+      }
+    } catch (dbError: any) {
+      console.error("Database error:", dbError)
+      if (
+        dbError.message &&
+        (dbError.message.includes("external_ticketing") ||
+          dbError.message.includes("fatsoma_") ||
+          dbError.message.includes("ticketing_provider"))
+      ) {
+        return {
+          success: false,
+          error: "Database schema needs to be updated. Please run the Fatsoma integration setup first.",
+          needsSetup: true,
+        }
+      }
+      throw dbError
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -235,8 +271,10 @@ export async function updateEvent(formData: FormData) {
     dj: (formData.get("dj") as string) || "",
     main_image: (formData.get("main_image") as string) || "",
     gallery_images: (formData.get("gallery_images") as string) || "[]",
-    ticket_types: (formData.get("ticket_types") as string) || "[]",
-    ticket_categories: (formData.get("ticket_categories") as string) || "[]",
+    external_ticketing: formData.get("external_ticketing") === "true",
+    ticketing_provider: (formData.get("ticketing_provider") as string) || "fatsoma",
+    fatsoma_event_id: (formData.get("fatsoma_event_id") as string) || "",
+    fatsoma_url: (formData.get("fatsoma_url") as string) || "",
   }
 
   try {
@@ -259,6 +297,8 @@ export async function updateEvent(formData: FormData) {
       capacity: rest.capacity,
       ticket_price: rest.ticket_price,
       status: rest.status,
+      external_ticketing: rest.external_ticketing,
+      ticketing_provider: rest.ticketing_provider,
     }
 
     // Only add optional fields if they have values
@@ -266,27 +306,56 @@ export async function updateEvent(formData: FormData) {
     if (rest.main_image) dataToUpdate.main_image = rest.main_image
     if (rest.long_description) dataToUpdate.long_description = rest.long_description
     if (rest.gallery_images) dataToUpdate.gallery_images = rest.gallery_images
-    if (rest.ticket_types) dataToUpdate.ticket_types = rest.ticket_types
-    if (rest.ticket_categories) dataToUpdate.ticket_categories = rest.ticket_categories
+    if (rest.fatsoma_event_id) dataToUpdate.fatsoma_event_id = rest.fatsoma_event_id
+    if (rest.fatsoma_url) dataToUpdate.fatsoma_url = rest.fatsoma_url
 
     // Update in database
-    const { data, error } = await supabase.from("events").update(dataToUpdate).eq("id", id).select()
+    try {
+      const { data, error } = await supabase.from("events").update(dataToUpdate).eq("id", id).select()
 
-    if (error) {
-      console.error("Error updating event:", error)
-      return { success: false, error: error.message }
-    }
+      if (error) {
+        // Check if the error is related to missing columns
+        if (
+          error.message.includes("external_ticketing") ||
+          error.message.includes("fatsoma_") ||
+          error.message.includes("ticketing_provider")
+        ) {
+          return {
+            success: false,
+            error: "Database schema needs to be updated. Please run the Fatsoma integration setup first.",
+            needsSetup: true,
+          }
+        }
+        console.error("Error updating event:", error)
+        return { success: false, error: error.message }
+      }
 
-    // Revalidate the path but don't redirect here
-    revalidatePath("/dashboard/ticketing")
-    revalidatePath("/events")
-    revalidatePath(`/events/${id}`)
+      // Revalidate the path but don't redirect here
+      revalidatePath("/dashboard/ticketing")
+      revalidatePath("/events")
+      revalidatePath(`/events/${id}`)
 
-    // Return success with the updated event data
-    return {
-      success: true,
-      data: data[0],
-      message: "Event updated successfully",
+      // Return success with the updated event data
+      return {
+        success: true,
+        data: data[0],
+        message: "Event updated successfully",
+      }
+    } catch (dbError: any) {
+      console.error("Database error:", dbError)
+      if (
+        dbError.message &&
+        (dbError.message.includes("external_ticketing") ||
+          dbError.message.includes("fatsoma_") ||
+          dbError.message.includes("ticketing_provider"))
+      ) {
+        return {
+          success: false,
+          error: "Database schema needs to be updated. Please run the Fatsoma integration setup first.",
+          needsSetup: true,
+        }
+      }
+      throw dbError
     }
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -5,58 +5,66 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { CalendarDays, Clock, MapPin, Music, Users, Ticket, Share2, Heart } from "lucide-react"
+import { CalendarDays, Clock, MapPin, Music, Users, Ticket, Share2, Heart, ExternalLink } from "lucide-react"
 import { createServerActionClient } from "@/lib/supabase/server"
+import { TicketButton } from "@/components/client/ticket-button"
 
 export const revalidate = 3600 // Revalidate this page every hour
 
 async function getEventById(id: string) {
   const supabase = createServerActionClient()
 
-  const { data, error } = await supabase.from("events").select("*").eq("id", id).single()
-
-  if (error || !data) {
-    console.error("Error fetching event:", error)
+  if (!supabase) {
+    console.error("Failed to create Supabase client")
     return null
   }
 
-  return {
-    ...data,
-    ticket_categories: data.ticket_categories
-      ? JSON.parse(data.ticket_categories)
-      : [
-          {
-            name: "Standard Tickets",
-            description: "Regular admission tickets",
-            tickets: [
-              { name: "General Admission", price: data.ticket_price, available: true },
-              { name: "VIP Entry", price: data.ticket_price * 2, available: true },
-              { name: "Table Reservation", price: data.ticket_price * 10, available: true },
-            ],
-          },
-        ],
-    gallery_images: data.gallery_images
-      ? JSON.parse(data.gallery_images)
-      : ["/images/gallery/event1.jpeg", "/images/gallery/event3.jpeg", "/images/gallery/event7.jpeg"],
+  try {
+    const { data, error } = await supabase.from("events").select("*").eq("id", id).single()
+
+    if (error || !data) {
+      console.error("Error fetching event:", error)
+      return null
+    }
+
+    return {
+      ...data,
+      gallery_images: data.gallery_images
+        ? JSON.parse(data.gallery_images)
+        : ["/images/gallery/event1.jpeg", "/images/gallery/event3.jpeg", "/images/gallery/event7.jpeg"],
+    }
+  } catch (error) {
+    console.error("Error in getEventById:", error)
+    return null
   }
 }
 
 async function getRelatedEvents(currentId: string) {
   const supabase = createServerActionClient()
 
-  const { data, error } = await supabase
-    .from("events")
-    .select("*")
-    .neq("id", currentId)
-    .order("date", { ascending: true })
-    .limit(2)
-
-  if (error) {
-    console.error("Error fetching related events:", error)
+  if (!supabase) {
+    console.error("Failed to create Supabase client")
     return []
   }
 
-  return data || []
+  try {
+    const { data, error } = await supabase
+      .from("events")
+      .select("*")
+      .neq("id", currentId)
+      .order("date", { ascending: true })
+      .limit(2)
+
+    if (error) {
+      console.error("Error fetching related events:", error)
+      return []
+    }
+
+    return data || []
+  } catch (error) {
+    console.error("Error in getRelatedEvents:", error)
+    return []
+  }
 }
 
 export default async function EventPage({ params }: { params: { id: string } }) {
@@ -87,16 +95,22 @@ export default async function EventPage({ params }: { params: { id: string } }) 
       {/* Hero Section */}
       <div className="relative h-[40vh] md:h-[50vh] rounded-xl overflow-hidden mb-8">
         <Image
-          src={event.main_image || "/placeholder.svg"}
+          src={event.main_image || "/placeholder.svg?height=400&width=800&text=Event+Image"}
           alt={event.name}
           fill
           className="object-cover brightness-75"
           priority
         />
         <div className="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-black/80 to-transparent">
-          <Badge className="mb-2 w-fit" variant="secondary">
-            {event.status}
-          </Badge>
+          <div className="flex gap-2 mb-2">
+            <Badge variant="secondary">{event.status}</Badge>
+            {event.external_ticketing && (
+              <Badge className="bg-green-600 hover:bg-green-700">
+                <ExternalLink className="w-3 h-3 mr-1" />
+                {event.ticketing_provider || "External"}
+              </Badge>
+            )}
+          </div>
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-2">{event.name}</h1>
           <p className="text-white/80 max-w-3xl">{event.description}</p>
         </div>
@@ -168,6 +182,21 @@ export default async function EventPage({ params }: { params: { id: string } }) 
                       {event.long_description || event.description}
                     </div>
                   </div>
+
+                  {event.external_ticketing && event.fatsoma_url && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <ExternalLink className="h-4 w-4 text-green-600" />
+                        <h3 className="font-medium text-green-800">Tickets Available on Fatsoma</h3>
+                      </div>
+                      <p className="text-green-700 text-sm mb-3">
+                        Secure your tickets through our trusted partner Fatsoma for the best booking experience.
+                      </p>
+                      <TicketButton fatsoma_url={event.fatsoma_url} className="bg-green-600 hover:bg-green-700">
+                        View on Fatsoma <ExternalLink className="ml-2 h-4 w-4" />
+                      </TicketButton>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -182,7 +211,7 @@ export default async function EventPage({ params }: { params: { id: string } }) 
                     {[event.main_image, ...(event.gallery_images || [])].map((image, index) => (
                       <div key={index} className="relative aspect-square rounded-md overflow-hidden">
                         <Image
-                          src={image || "/placeholder.svg"}
+                          src={image || `/placeholder.svg?height=300&width=300&text=Gallery+${index + 1}`}
                           alt={`${event.name} - Image ${index + 1}`}
                           fill
                           className="object-cover hover:scale-105 transition-transform duration-300"
@@ -225,30 +254,29 @@ export default async function EventPage({ params }: { params: { id: string } }) 
               <CardTitle>Get Tickets</CardTitle>
               <CardDescription>Secure your spot at {event.name}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {event.ticket_categories.map((category: any, categoryIndex: number) => (
-                <div key={categoryIndex} className="space-y-3">
-                  <div>
-                    <h3 className="font-medium">{category.name}</h3>
-                    {category.description && <p className="text-xs text-muted-foreground">{category.description}</p>}
+            <CardContent className="space-y-4">
+              {event.external_ticketing && event.fatsoma_url ? (
+                <div className="text-center space-y-3">
+                  <div className="flex items-center justify-center gap-2 text-green-600">
+                    <ExternalLink className="h-4 w-4" />
+                    <span className="text-sm font-medium">Powered by Fatsoma</span>
                   </div>
-
-                  {category.tickets.map((ticket: any, ticketIndex: number) => (
-                    <div key={ticketIndex} className="flex justify-between items-center p-3 border rounded-lg">
-                      <div>
-                        <h4 className="font-medium">{ticket.name}</h4>
-                        <p className="text-sm text-muted-foreground">£{ticket.price}</p>
-                      </div>
-                      <Button size="sm" disabled={!ticket.available}>
-                        {ticket.available ? "Buy" : "Sold Out"}
-                      </Button>
-                    </div>
-                  ))}
+                  <p className="text-sm text-muted-foreground">
+                    Click below to be redirected to Fatsoma for secure ticket purchasing
+                  </p>
                 </div>
-              ))}
+              ) : (
+                <div className="text-center space-y-3">
+                  <p className="text-sm text-muted-foreground">Tickets will be available soon</p>
+                </div>
+              )}
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
-              <Button className="w-full">Buy Tickets</Button>
+              <TicketButton
+                fatsoma_url={event.fatsoma_url}
+                external_ticketing={event.external_ticketing}
+                className="w-full"
+              />
               <div className="flex justify-between w-full">
                 <Button variant="outline" size="icon">
                   <Share2 className="h-4 w-4" />
@@ -271,11 +299,17 @@ export default async function EventPage({ params }: { params: { id: string } }) 
               <Card key={relatedEvent.id} className="overflow-hidden">
                 <div className="relative h-48">
                   <Image
-                    src={relatedEvent.main_image || "/placeholder.svg"}
+                    src={relatedEvent.main_image || "/placeholder.svg?height=200&width=400&text=Event+Image"}
                     alt={relatedEvent.name}
                     fill
                     className="object-cover"
                   />
+                  {relatedEvent.external_ticketing && (
+                    <Badge className="absolute top-2 right-2 bg-green-600 hover:bg-green-700">
+                      <ExternalLink className="w-3 h-3 mr-1" />
+                      {relatedEvent.ticketing_provider}
+                    </Badge>
+                  )}
                 </div>
                 <CardContent className="p-4">
                   <h3 className="font-bold">{relatedEvent.name}</h3>

@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { format } from "date-fns"
-import { CalendarIcon, Clock, Music, MapPin, AlertCircle, InfoIcon } from "lucide-react"
+import { CalendarIcon, Clock, Music, MapPin, AlertCircle, InfoIcon, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -20,22 +20,9 @@ import { useToast } from "@/components/ui/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ImageUpload } from "@/components/ui/image-upload"
 import { MultiImageUpload } from "@/components/ui/multi-image-upload"
-import { TicketCategorySelector, type TicketCategory } from "./ticket-category-selector"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-
-const ticketTypeSchema = z.object({
-  name: z.string().min(1, "Ticket name is required"),
-  price: z.number().min(0, "Price cannot be negative"),
-  available: z.boolean().default(true),
-})
-
-const ticketCategorySchema = z.object({
-  name: z.string().min(1, "Category name is required"),
-  description: z.string().optional(),
-  tickets: z.array(ticketTypeSchema),
-})
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Switch } from "@/components/ui/switch"
 
 const formSchema = z.object({
   id: z.string().optional(),
@@ -54,25 +41,20 @@ const formSchema = z.object({
   dj: z.string().optional(),
   main_image: z.string().min(1, "Main image is required"),
   gallery_images: z.array(z.string()).optional(),
+  // Fatsoma integration fields
+  external_ticketing: z.boolean().default(true),
+  ticketing_provider: z.string().default("fatsoma"),
+  fatsoma_event_id: z.string().optional(),
+  fatsoma_url: z.string().url("Please enter a valid Fatsoma URL").optional().or(z.literal("")),
 })
-
-// Default ticket categories
-const defaultTicketCategories = [
-  {
-    name: "Standard Tickets",
-    description: "Regular admission tickets",
-    tickets: [
-      { name: "General Admission", price: 25, available: true },
-      { name: "VIP Entry", price: 50, available: true },
-      { name: "Table Reservation", price: 300, available: true },
-    ],
-  },
-]
 
 interface EventFormProps {
   event?: EventFormData & {
-    ticket_categories?: any
     gallery_images?: string[]
+    external_ticketing?: boolean
+    ticketing_provider?: string
+    fatsoma_event_id?: string
+    fatsoma_url?: string
   }
 }
 
@@ -82,17 +64,7 @@ export function EventForm({ event }: EventFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("basic")
-  const [databaseError, setDatabaseError] = useState(false)
-
-  // Parse ticket categories from JSON string if available
-  const initialTicketCategories = event?.ticket_categories
-    ? typeof event.ticket_categories === "string"
-      ? JSON.parse(event.ticket_categories)
-      : event.ticket_categories
-    : defaultTicketCategories
-
-  const [ticketCategories, setTicketCategories] = useState<TicketCategory[]>(initialTicketCategories)
-  const [ticketCategoriesChanged, setTicketCategoriesChanged] = useState(false)
+  const [needsSetup, setNeedsSetup] = useState(false)
 
   // Parse gallery images from JSON string if available
   const initialGalleryImages = event?.gallery_images
@@ -122,21 +94,15 @@ export function EventForm({ event }: EventFormProps) {
       dj: event?.dj || "",
       main_image: event?.main_image || "/images/gallery/event1.jpeg",
       gallery_images: initialGalleryImages,
+      external_ticketing: event?.external_ticketing ?? true,
+      ticketing_provider: event?.ticketing_provider || "fatsoma",
+      fatsoma_event_id: event?.fatsoma_event_id || "",
+      fatsoma_url: event?.fatsoma_url || "",
     },
   })
 
-  // Handle ticket category changes
-  const handleTicketCategoriesChange = (categories: TicketCategory[]) => {
-    setTicketCategories(categories)
-    setTicketCategoriesChanged(true)
-    // Show a toast to confirm changes
-    if (categories.length > 0 && !ticketCategoriesChanged) {
-      toast({
-        title: "Ticket categories updated",
-        description: "Your ticket categories have been updated. Don't forget to save the event to apply changes.",
-      })
-    }
-  }
+  const watchExternalTicketing = form.watch("external_ticketing")
+  const watchFatsomaUrl = form.watch("fatsoma_url")
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true)
@@ -161,28 +127,24 @@ export function EventForm({ event }: EventFormProps) {
     if (values.dj) formData.append("dj", values.dj)
     formData.append("main_image", values.main_image)
 
+    // Fatsoma integration fields
+    formData.append("external_ticketing", String(values.external_ticketing))
+    formData.append("ticketing_provider", values.ticketing_provider)
+    if (values.fatsoma_event_id) formData.append("fatsoma_event_id", values.fatsoma_event_id)
+    if (values.fatsoma_url) formData.append("fatsoma_url", values.fatsoma_url)
+
     // Ensure gallery_images is a string
     const galleryImagesString = JSON.stringify(values.gallery_images || [])
     formData.append("gallery_images", galleryImagesString)
-
-    // Ensure ticket_categories is a string
-    const ticketCategoriesString = JSON.stringify(ticketCategories || [])
-    formData.append("ticket_categories", ticketCategoriesString)
 
     try {
       const result = event?.id ? await updateEvent(formData) : await createEvent(formData)
 
       if (!result.success) {
         // Check if the error is related to missing columns
-        if (
-          result.error &&
-          (result.error.includes("column") ||
-            result.error.includes("schema") ||
-            result.error.includes("ticket_types") ||
-            result.error.includes("ticket_categories"))
-        ) {
-          setDatabaseError(true)
-          setError("Database schema needs to be updated. Please run the database setup first.")
+        if (result.needsSetup) {
+          setNeedsSetup(true)
+          setError("Database schema needs to be updated. Please run the Fatsoma integration setup first.")
         } else {
           setError(result.error || "Failed to save event")
         }
@@ -216,38 +178,6 @@ export function EventForm({ event }: EventFormProps) {
     }
   }
 
-  if (databaseError) {
-    return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="text-destructive">Database Update Required</CardTitle>
-          <CardDescription>
-            The events table needs to be updated to support ticket categories and other new features.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Database Schema Error</AlertTitle>
-            <AlertDescription>
-              {error || "The database schema needs to be updated to support the new event features."}
-            </AlertDescription>
-          </Alert>
-          <p className="text-sm text-muted-foreground mb-4">
-            Please run the database setup to add the required columns to the events table. This is a one-time setup that
-            will enable all the new event features.
-          </p>
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <Button variant="outline" onClick={() => router.push("/dashboard/ticketing")}>
-            Cancel
-          </Button>
-          <Button onClick={() => router.push("/dashboard/ticketing/setup")}>Go to Database Setup</Button>
-        </CardFooter>
-      </Card>
-    )
-  }
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -259,6 +189,27 @@ export function EventForm({ event }: EventFormProps) {
           </Alert>
         )}
 
+        {needsSetup && (
+          <Alert className="mb-4 bg-yellow-50 border-yellow-200">
+            <AlertCircle className="h-4 w-4 text-yellow-600" />
+            <AlertTitle className="text-yellow-800">Database Setup Required</AlertTitle>
+            <AlertDescription className="text-yellow-700">
+              The Fatsoma integration fields need to be added to your database before you can use external ticketing
+              features.
+              <div className="mt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push("/dashboard/ticketing/setup")}
+                  className="text-yellow-800 border-yellow-300 hover:bg-yellow-100"
+                >
+                  Go to Setup Page
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {event?.id && <input type="hidden" name="id" value={event.id} />}
 
         <Tabs defaultValue="basic" className="w-full" value={activeTab} onValueChange={setActiveTab}>
@@ -266,7 +217,7 @@ export function EventForm({ event }: EventFormProps) {
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
             <TabsTrigger value="details">Event Details</TabsTrigger>
             <TabsTrigger value="media">Media</TabsTrigger>
-            <TabsTrigger value="tickets">Tickets</TabsTrigger>
+            <TabsTrigger value="ticketing">Ticketing</TabsTrigger>
           </TabsList>
 
           <TabsContent value="basic" className="space-y-6 pt-4">
@@ -564,46 +515,137 @@ export function EventForm({ event }: EventFormProps) {
               <Button type="button" onClick={() => setActiveTab("details")}>
                 Back: Event Details
               </Button>
-              <Button type="button" onClick={() => setActiveTab("tickets")}>
-                Next: Tickets
+              <Button type="button" onClick={() => setActiveTab("ticketing")}>
+                Next: Ticketing
               </Button>
             </div>
           </TabsContent>
 
-          <TabsContent value="tickets" className="space-y-6 pt-4">
-            <TooltipProvider>
-              <div className="flex items-center mb-2">
-                <h3 className="text-lg font-medium">Ticket Categories</h3>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 ml-2">
-                      <InfoIcon className="h-4 w-4" />
-                      <span className="sr-only">About ticket categories</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-sm">
-                    <p>
-                      Ticket categories allow you to group different types of tickets together. For example, you might
-                      have "Standard Tickets" and "VIP Tickets" categories, each with different ticket types and prices.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            </TooltipProvider>
+          <TabsContent value="ticketing" className="space-y-6 pt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ExternalLink className="h-5 w-5" />
+                  Fatsoma Integration
+                </CardTitle>
+                <CardDescription>
+                  Connect your event to Fatsoma for professional ticket sales and management.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="external_ticketing"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Use External Ticketing</FormLabel>
+                        <FormDescription>
+                          Enable this to redirect customers to Fatsoma for ticket purchases instead of handling tickets
+                          internally.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
 
-            {ticketCategories.length > 0 && (
-              <Alert className="mb-6 bg-blue-50 border-blue-200">
-                <AlertCircle className="h-4 w-4 text-blue-600" />
-                <AlertTitle className="text-blue-800">Ticket Categories</AlertTitle>
-                <AlertDescription className="text-blue-700">
-                  {ticketCategoriesChanged
-                    ? "Your ticket categories have been updated. Don't forget to save the event to apply changes."
-                    : "You can customize ticket categories below. Changes will be saved when you submit the form."}
-                </AlertDescription>
-              </Alert>
-            )}
+                {watchExternalTicketing && (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="ticketing_provider"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Ticketing Provider</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select ticketing provider" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="fatsoma">Fatsoma</SelectItem>
+                              <SelectItem value="eventbrite">Eventbrite</SelectItem>
+                              <SelectItem value="ticketmaster">Ticketmaster</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-            <TicketCategorySelector value={ticketCategories} onChange={handleTicketCategoriesChange} />
+                    <FormField
+                      control={form.control}
+                      name="fatsoma_event_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fatsoma Event ID</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., 12345" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            The unique event ID from Fatsoma (optional, for tracking purposes)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="fatsoma_url"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fatsoma Event URL</FormLabel>
+                          <FormControl>
+                            <Input placeholder="https://www.fatsoma.com/events/your-event" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            The full URL to your event on Fatsoma where customers will be redirected to buy tickets
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {watchFatsomaUrl && (
+                      <Alert className="bg-green-50 border-green-200">
+                        <ExternalLink className="h-4 w-4 text-green-600" />
+                        <AlertTitle className="text-green-800">Fatsoma Integration Active</AlertTitle>
+                        <AlertDescription className="text-green-700">
+                          Customers will be redirected to Fatsoma when they click "Get Tickets" or "Buy Tickets" on your
+                          event pages.
+                          <br />
+                          <a
+                            href={watchFatsomaUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 mt-2 text-green-800 hover:text-green-900 underline"
+                          >
+                            Preview Fatsoma Event <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </>
+                )}
+
+                {!watchExternalTicketing && (
+                  <Alert>
+                    <InfoIcon className="h-4 w-4" />
+                    <AlertTitle>Internal Ticketing</AlertTitle>
+                    <AlertDescription>
+                      With external ticketing disabled, you'll need to set up internal ticket categories and handle
+                      payments through your own system.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
 
             <div className="flex justify-between pt-4">
               <Button type="button" onClick={() => setActiveTab("media")}>
@@ -616,7 +658,7 @@ export function EventForm({ event }: EventFormProps) {
           </TabsContent>
         </Tabs>
 
-        {activeTab !== "tickets" && (
+        {activeTab !== "ticketing" && (
           <div className="flex justify-end space-x-4 pt-4">
             <Button
               type="button"

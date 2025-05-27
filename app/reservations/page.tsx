@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,6 +15,8 @@ import { format } from "date-fns"
 import { useState } from "react"
 import Image from "next/image"
 import { VipExperience } from "@/components/client/vip-experience"
+import { useToast } from "@/hooks/use-toast"
+import { createClientReservation } from "@/app/actions/client-reservation-actions"
 
 export default function ReservationsPage() {
   return (
@@ -171,27 +175,105 @@ export default function ReservationsPage() {
 
 function ReservationForm() {
   const [date, setDate] = useState<Date>()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitted, setIsSubmitted] = useState(false)
+  const { toast } = useToast()
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const formData = new FormData(event.currentTarget)
+
+    console.log("Form submission started")
+    console.log("Form data entries:", Array.from(formData.entries()))
+
+    if (!date) {
+      console.log("Date validation failed")
+      toast({
+        title: "Date Required",
+        description: "Please select a date for your reservation.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      // Add the formatted date to form data
+      const formattedDate = format(date, "yyyy-MM-dd")
+      formData.set("date", formattedDate)
+
+      console.log("Formatted date:", formattedDate)
+      console.log("Final form data:", Array.from(formData.entries()))
+
+      const result = await createClientReservation(formData)
+      console.log("Reservation result:", result)
+
+      if (result.success) {
+        setIsSubmitted(true)
+        const isNewGuest = result.data?.isNewGuest
+        toast({
+          title: "Reservation Submitted!",
+          description: isNewGuest
+            ? "Your profile has been created and reservation submitted. We'll contact you within 24 hours to confirm."
+            : "Your reservation request has been submitted. We'll contact you within 24 hours to confirm.",
+        })
+      } else {
+        console.error("Reservation failed:", result)
+        toast({
+          title: "Submission Failed",
+          description: result.message || "There was an error submitting your reservation. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Reservation submission error:", error)
+      toast({
+        title: "Submission Failed",
+        description: "There was an error submitting your reservation. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (isSubmitted) {
+    return (
+      <div className="text-center py-8">
+        <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+        <h3 className="text-2xl font-bold mb-2">Reservation Submitted!</h3>
+        <p className="text-muted-foreground mb-6">
+          Thank you for your reservation request. Our team will contact you within 24 hours to confirm availability and
+          finalize the details.
+        </p>
+        <Button onClick={() => setIsSubmitted(false)} variant="outline">
+          Submit Another Reservation
+        </Button>
+      </div>
+    )
+  }
 
   return (
-    <form className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="name">Full Name</Label>
-          <Input id="name" placeholder="Enter your full name" />
+          <Label htmlFor="name">Full Name *</Label>
+          <Input id="name" name="name" placeholder="Enter your full name" required />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" placeholder="Enter your email" />
+          <Label htmlFor="email">Email *</Label>
+          <Input id="email" name="email" type="email" placeholder="Enter your email" required />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="phone">Phone Number</Label>
-          <Input id="phone" type="tel" placeholder="Enter your phone number" />
+          <Label htmlFor="phone">Phone Number *</Label>
+          <Input id="phone" name="phone" type="tel" placeholder="Enter your phone number" required />
         </div>
 
         <div className="space-y-2">
-          <Label>Date</Label>
+          <Label htmlFor="date">Date *</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-full justify-start text-left font-normal">
@@ -200,30 +282,36 @@ function ReservationForm() {
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
-              <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                initialFocus
+                disabled={(date) => date < new Date()}
+              />
             </PopoverContent>
           </Popover>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="time">Time</Label>
-          <Select>
+          <Label htmlFor="time">Preferred Time *</Label>
+          <Select name="time" required>
             <SelectTrigger id="time">
               <SelectValue placeholder="Select a time" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="9pm">9:00 PM</SelectItem>
-              <SelectItem value="10pm">10:00 PM</SelectItem>
-              <SelectItem value="11pm">11:00 PM</SelectItem>
-              <SelectItem value="12am">12:00 AM</SelectItem>
+              <SelectItem value="21:00">9:00 PM</SelectItem>
+              <SelectItem value="22:00">10:00 PM</SelectItem>
+              <SelectItem value="23:00">11:00 PM</SelectItem>
+              <SelectItem value="00:00">12:00 AM</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="guests">Number of Guests</Label>
-          <Select>
-            <SelectTrigger id="guests">
+          <Label htmlFor="party_size">Number of Guests *</Label>
+          <Select name="party_size" required>
+            <SelectTrigger id="party_size">
               <SelectValue placeholder="Select number of guests" />
             </SelectTrigger>
             <SelectContent>
@@ -234,15 +322,15 @@ function ReservationForm() {
               <SelectItem value="8">8 guests</SelectItem>
               <SelectItem value="9">9 guests</SelectItem>
               <SelectItem value="10">10 guests</SelectItem>
-              <SelectItem value="10+">More than 10 guests</SelectItem>
+              <SelectItem value="12">More than 10 guests</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="table-type">Table Type</Label>
-          <Select>
-            <SelectTrigger id="table-type">
+          <Label htmlFor="type">Table Type *</Label>
+          <Select name="type" required>
+            <SelectTrigger id="type">
               <SelectValue placeholder="Select table type" />
             </SelectTrigger>
             <SelectContent>
@@ -253,13 +341,18 @@ function ReservationForm() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="special-requests">Special Requests</Label>
-          <Textarea id="special-requests" placeholder="Any special requests or occasions?" className="min-h-[100px]" />
+          <Label htmlFor="special_requests">Special Requests</Label>
+          <Textarea
+            id="special_requests"
+            name="special_requests"
+            placeholder="Any special requests or occasions?"
+            className="min-h-[100px]"
+          />
         </div>
       </div>
 
-      <Button type="submit" className="w-full">
-        Submit Reservation Request
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting ? "Submitting..." : "Submit Reservation Request"}
       </Button>
 
       <p className="text-xs text-muted-foreground text-center">
