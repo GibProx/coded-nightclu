@@ -1,102 +1,126 @@
-"use client"
-
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Suspense } from "react"
+import { getStaffMembers } from "@/app/actions/staff-actions"
+import { StaffTable } from "@/components/dashboard/staff-table"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { Button } from "@/components/ui/button"
-import { PlusIcon } from "lucide-react"
-import { getStaffMembers } from "@/app/actions/staff-actions"
-import { StaffTable } from "@/components/dashboard/staff-table"
-import { Suspense } from "react"
-import { ErrorBoundary } from "@/components/ui/error-boundary"
+import { UserPlus, Users, Shield, AlertTriangle } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
-export default async function StaffPage() {
+async function StaffContent() {
+  const staff = await getStaffMembers()
+
+  // Check if user management fields exist
+  const hasUserManagementFields = staff.some(
+    (s) => s.hasOwnProperty("system_access") || s.hasOwnProperty("system_role") || s.hasOwnProperty("permissions"),
+  )
+
+  // Calculate user statistics (with fallbacks for missing fields)
+  const totalUsers = staff.length
+  const activeUsers = staff.filter((s) => s.active && (s.system_access ?? false)).length
+  const adminUsers = staff.filter((s) => s.system_role === "admin").length
+  const managerUsers = staff.filter((s) => s.system_role === "manager").length
+
   return (
-    <DashboardShell>
-      <DashboardHeader heading="Staff Management" text="Manage your staff and their schedules">
-        <Button className="ml-auto" asChild>
-          <a href="/dashboard/staff/new">
-            <PlusIcon className="mr-2 h-4 w-4" />
-            Add Staff
-          </a>
-        </Button>
-      </DashboardHeader>
+    <div className="space-y-6">
+      {/* Show setup alert if user management fields are missing */}
+      {!hasUserManagementFields && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            User management features require database setup.
+            <Button variant="link" className="p-0 h-auto ml-1" asChild>
+              <a href="/dashboard/setup">Run database migration</a>
+            </Button>
+            to enable full user management capabilities.
+          </AlertDescription>
+        </Alert>
+      )}
 
-      <Tabs defaultValue="directory" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="directory">Directory</TabsTrigger>
-          <TabsTrigger value="schedule">Schedule</TabsTrigger>
-          <TabsTrigger value="roles">Roles</TabsTrigger>
-        </TabsList>
+      {/* User Statistics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalUsers}</div>
+            <p className="text-xs text-muted-foreground">All staff members in system</p>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="directory" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Staff Directory</CardTitle>
-              <CardDescription>Complete list of all staff members and their contact information.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ErrorBoundary fallback={<StaffTableError />}>
-                <Suspense fallback={<div>Loading staff members...</div>}>
-                  <StaffTableWrapper />
-                </Suspense>
-              </ErrorBoundary>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+            <Shield className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{activeUsers}</div>
+            <p className="text-xs text-muted-foreground">Users with system access</p>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="schedule" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Staff Schedule</CardTitle>
-              <CardDescription>View and manage staff schedules and assignments.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <h3 className="text-lg font-medium">Schedule Management</h3>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Staff schedule management will be implemented soon.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Administrators</CardTitle>
+            <Badge variant="destructive" className="h-4 w-4 p-0 text-xs">
+              A
+            </Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{adminUsers}</div>
+            <p className="text-xs text-muted-foreground">Full system access</p>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="roles" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Staff Roles & Permissions</CardTitle>
-              <CardDescription>Manage staff roles, responsibilities, and system access.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <h3 className="text-lg font-medium">Role Management</h3>
-                <p className="text-sm text-muted-foreground mt-2">Staff role management will be implemented soon.</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </DashboardShell>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Managers</CardTitle>
+            <Badge variant="secondary" className="h-4 w-4 p-0 text-xs">
+              M
+            </Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{managerUsers}</div>
+            <p className="text-xs text-muted-foreground">Management access</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* User Management Table */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>User Management</CardTitle>
+              <CardDescription>Manage staff members and their system access permissions</CardDescription>
+            </div>
+            <Button asChild>
+              <a href="/dashboard/staff/new">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add User
+              </a>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <StaffTable staff={staff} />
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 
-async function StaffTableWrapper() {
-  const staffMembers = await getStaffMembers()
-  return <StaffTable staff={staffMembers || []} />
-}
-
-function StaffTableError() {
+export default function StaffPage() {
   return (
-    <div className="text-center py-8">
-      <h3 className="text-lg font-medium text-destructive">Error Loading Staff</h3>
-      <p className="text-sm text-muted-foreground mt-2">
-        There was a problem loading the staff directory. Please try again later.
-      </p>
-      <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
-        Try Again
-      </Button>
-    </div>
+    <DashboardShell>
+      <DashboardHeader heading="User Management" text="Manage staff members, user accounts, and system permissions." />
+      <Suspense fallback={<div>Loading users...</div>}>
+        <StaffContent />
+      </Suspense>
+    </DashboardShell>
   )
 }

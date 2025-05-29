@@ -2,7 +2,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Overview } from "@/components/dashboard/overview"
 import { RecentBookings } from "@/components/dashboard/recent-bookings"
-import { StaffSchedule } from "@/components/dashboard/staff-schedule"
 import { InventoryStatus } from "@/components/dashboard/inventory-status"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
@@ -23,33 +22,11 @@ export default function DashboardPage() {
         <RevenueCard />
         <GuestsTonightCard />
         <TablesBookedCard />
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Staff On Duty</CardTitle>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              className="h-4 w-4 text-muted-foreground"
-            >
-              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-            </svg>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">18</div>
-            <p className="text-xs text-muted-foreground">4 bartenders, 8 security, 6 service</p>
-          </CardContent>
-        </Card>
       </div>
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="w-full flex-wrap justify-start">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="bookings">Bookings</TabsTrigger>
-          <TabsTrigger value="staff">Staff</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="space-y-4">
@@ -86,17 +63,6 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="overflow-auto">
               <RecentBookings fullList={true} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="staff" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Staff Schedule</CardTitle>
-              <CardDescription>View and manage staff schedules and assignments.</CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-auto">
-              <StaffSchedule />
             </CardContent>
           </Card>
         </TabsContent>

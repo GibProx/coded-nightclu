@@ -4,13 +4,35 @@ import type { Staff } from "@/types/database"
 import { revalidatePath } from "next/cache"
 import { createServerActionClient } from "@/lib/supabase/server"
 
+// Check if user management columns exist
+async function checkUserManagementColumns(): Promise<boolean> {
+  try {
+    const supabase = createServerActionClient()
+    const { data, error } = await supabase
+      .from("information_schema.columns")
+      .select("column_name")
+      .eq("table_name", "staff")
+      .in("column_name", ["user_id", "system_access", "system_role", "permissions"])
+
+    if (error) {
+      console.error("Error checking columns:", error)
+      return false
+    }
+
+    return data && data.length >= 4
+  } catch (error) {
+    console.error("Error in column check:", error)
+    return false
+  }
+}
+
 // Get all staff members
 export async function getStaffMembers(): Promise<Staff[]> {
   try {
     return await dataProvider.staff.getAll()
   } catch (error) {
     console.error("Error fetching staff:", error)
-    return [] // Return empty array instead of throwing
+    return []
   }
 }
 
@@ -25,71 +47,88 @@ export async function getStaffMember(id: string): Promise<Staff | null> {
 }
 
 // Create a new staff member with optional user account
-export async function createStaffMember(
-  staffData: Omit<Staff, "id" | "created_at" | "updated_at"> & {
-    create_user_account?: boolean
-    temporary_password?: string
-    system_access?: boolean
-    system_role?: string
-    permissions?: any
-  },
-): Promise<{ success: boolean; data?: Staff; error?: string }> {
+export async function createStaffMember(formData: any): Promise<{ success: boolean; data?: Staff; error?: string }> {
   try {
-    // Create staff member first
-    const result = await dataProvider.staff.create(staffData)
+    // Check if user management columns exist
+    const hasUserManagementColumns = await checkUserManagementColumns()
+
+    // Extract form-only fields and user management fields
+    const { create_user_account, temporary_password, system_access, system_role, permissions, ...basicStaffData } =
+      formData
+
+    // Prepare data for database - only include fields that exist
+    let staffDataForDB = { ...basicStaffData }
+
+    if (hasUserManagementColumns) {
+      // Include user management fields if columns exist
+      staffDataForDB = {
+        ...staffDataForDB,
+        system_access: system_access ?? false,
+        system_role: system_role ?? "staff",
+        permissions: permissions ?? {},
+      }
+    } else {
+      console.log("User management columns not found, creating basic staff record only")
+    }
+
+    // Create staff member
+    const result = await dataProvider.staff.create(staffDataForDB)
 
     if (!result.success || !result.data) {
       return result
     }
 
-    // If user account creation is requested, create Supabase user
-    if (staffData.create_user_account && staffData.temporary_password) {
+    // If user account creation is requested and we have the columns, create Supabase user
+    if (hasUserManagementColumns && create_user_account && temporary_password) {
       try {
         const supabase = createServerActionClient()
 
         // Create user in Supabase Auth
         const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email: staffData.email,
-          password: staffData.temporary_password,
+          email: basicStaffData.email,
+          password: temporary_password,
           email_confirm: true,
           user_metadata: {
-            name: staffData.name,
-            role: staffData.system_role || "staff",
+            name: basicStaffData.name,
+            role: system_role || "staff",
             staff_id: result.data.id,
           },
         })
 
         if (authError) {
           console.error("Error creating user account:", authError)
-          // Don't fail the staff creation, just log the error
         } else if (authData.user) {
-          // Create profile record
-          const { error: profileError } = await supabase.from("profiles").insert({
-            id: authData.user.id,
-            email: staffData.email,
-            name: staffData.name,
-            role: staffData.system_role || "staff",
-            staff_id: result.data.id,
-            permissions: staffData.permissions,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
+          // Create profile record if profiles table exists
+          try {
+            const { error: profileError } = await supabase.from("profiles").insert({
+              id: authData.user.id,
+              email: basicStaffData.email,
+              name: basicStaffData.name,
+              role: system_role || "staff",
+              staff_id: result.data.id,
+              permissions: permissions || {},
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
 
-          if (profileError) {
-            console.error("Error creating profile:", profileError)
+            if (profileError) {
+              console.error("Error creating profile:", profileError)
+            }
+          } catch (profileCreateError) {
+            console.error("Profiles table may not exist:", profileCreateError)
           }
 
           // Update staff record with user_id
-          await dataProvider.staff.update(result.data.id, {
-            user_id: authData.user.id,
-            system_access: staffData.system_access,
-            system_role: staffData.system_role,
-            permissions: staffData.permissions,
-          })
+          try {
+            await dataProvider.staff.update(result.data.id, {
+              user_id: authData.user.id,
+            })
+          } catch (updateError) {
+            console.error("Error updating staff with user_id:", updateError)
+          }
         }
       } catch (userError) {
         console.error("Error in user creation process:", userError)
-        // Continue with staff creation even if user creation fails
       }
     }
 
@@ -97,6 +136,15 @@ export async function createStaffMember(
     return result
   } catch (error: any) {
     console.error("Error creating staff member:", error)
+
+    // Provide helpful error message
+    if (error.message?.includes("permissions") || error.message?.includes("system_access")) {
+      return {
+        success: false,
+        error: "User management features require database setup. Please run the database migration first.",
+      }
+    }
+
     return { success: false, error: error.message || "Failed to create staff member" }
   }
 }
@@ -104,17 +152,30 @@ export async function createStaffMember(
 // Update a staff member
 export async function updateStaffMember(
   id: string,
-  staffData: Partial<Staff> & {
-    system_access?: boolean
-    system_role?: string
-    permissions?: any
-  },
+  formData: any,
 ): Promise<{ success: boolean; data?: Staff; error?: string }> {
   try {
-    const result = await dataProvider.staff.update(id, staffData)
+    // Check if user management columns exist
+    const hasUserManagementColumns = await checkUserManagementColumns()
 
-    // If updating system access or permissions, update the profile too
-    if (staffData.system_access !== undefined || staffData.permissions) {
+    // Extract form-only fields and user management fields
+    const { create_user_account, temporary_password, system_access, system_role, permissions, ...basicStaffData } =
+      formData
+
+    // Prepare data for database - only include fields that exist
+    const staffDataForDB = { ...basicStaffData }
+
+    if (hasUserManagementColumns) {
+      // Include user management fields if columns exist
+      if (system_access !== undefined) staffDataForDB.system_access = system_access
+      if (system_role !== undefined) staffDataForDB.system_role = system_role
+      if (permissions !== undefined) staffDataForDB.permissions = permissions
+    }
+
+    const result = await dataProvider.staff.update(id, staffDataForDB)
+
+    // If updating system access or permissions and columns exist, update the profile too
+    if (hasUserManagementColumns && (system_access !== undefined || permissions)) {
       try {
         const supabase = createServerActionClient()
         const staff = await dataProvider.staff.getById(id)
@@ -123,8 +184,8 @@ export async function updateStaffMember(
           const { error: profileError } = await supabase
             .from("profiles")
             .update({
-              role: staffData.system_role,
-              permissions: staffData.permissions,
+              role: system_role,
+              permissions: permissions,
               updated_at: new Date().toISOString(),
             })
             .eq("id", staff.user_id)
@@ -142,6 +203,15 @@ export async function updateStaffMember(
     return result
   } catch (error: any) {
     console.error("Error updating staff member:", error)
+
+    // Provide helpful error message
+    if (error.message?.includes("permissions") || error.message?.includes("system_access")) {
+      return {
+        success: false,
+        error: "User management features require database setup. Please run the database migration first.",
+      }
+    }
+
     return { success: false, error: error.message || "Failed to update staff member" }
   }
 }
@@ -221,4 +291,9 @@ export async function resetStaffPassword(
     console.error("Error resetting password:", error)
     return { success: false, error: error.message || "Failed to reset password" }
   }
+}
+
+// Check if user management is available
+export async function checkUserManagementAvailable(): Promise<boolean> {
+  return await checkUserManagementColumns()
 }

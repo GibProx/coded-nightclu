@@ -20,8 +20,7 @@ export default async function TicketingPage() {
       <Tabs defaultValue="events" className="space-y-4">
         <TabsList>
           <TabsTrigger value="events">Events</TabsTrigger>
-          <TabsTrigger value="sales">Ticket Sales</TabsTrigger>
-          <TabsTrigger value="scanner">Ticket Scanner</TabsTrigger>
+          <TabsTrigger value="all">All Events</TabsTrigger>
         </TabsList>
 
         <TabsContent value="events" className="space-y-4">
@@ -89,53 +88,6 @@ export default async function TicketingPage() {
               </Card>
             </TabsContent>
           </Tabs>
-        </TabsContent>
-
-        <TabsContent value="sales" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Ticket Sales</CardTitle>
-              <CardDescription>Track ticket sales and revenue for all events.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-center py-8 text-muted-foreground">Ticket sales functionality coming soon.</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="scanner" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Ticket Scanner</CardTitle>
-              <CardDescription>Scan and validate tickets at entry points.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex h-[400px] items-center justify-center">
-              <div className="flex flex-col items-center text-center">
-                <div className="rounded-lg border border-dashed border-muted-foreground p-8">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-16 w-16 text-muted-foreground"
-                  >
-                    <rect width="18" height="18" x="3" y="3" rx="2" />
-                    <path d="M8 7v10" />
-                    <path d="M12 7v10" />
-                    <path d="M16 7v10" />
-                  </svg>
-                </div>
-                <h3 className="mt-4 text-lg font-medium">Scan QR Code</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Use a camera to scan ticket QR codes for validation.
-                </p>
-                <Button className="mt-4">Enable Camera</Button>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </DashboardShell>
