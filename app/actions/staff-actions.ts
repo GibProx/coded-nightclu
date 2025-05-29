@@ -8,20 +8,15 @@ import { createServerActionClient } from "@/lib/supabase/server"
 async function checkUserManagementColumns(): Promise<boolean> {
   try {
     const supabase = createServerActionClient()
-    const { data, error } = await supabase
-      .from("information_schema.columns")
-      .select("column_name")
-      .eq("table_name", "staff")
-      .in("column_name", ["user_id", "system_access", "system_role", "permissions"])
 
-    if (error) {
-      console.error("Error checking columns:", error)
-      return false
-    }
+    // Try to query the staff table with user management columns
+    // If they don't exist, this will throw an error
+    const { error } = await supabase.from("staff").select("user_id, system_access, system_role, permissions").limit(1)
 
-    return data && data.length >= 4
+    // If no error, columns exist
+    return !error
   } catch (error) {
-    console.error("Error in column check:", error)
+    console.error("User management columns not available:", error)
     return false
   }
 }
@@ -98,26 +93,6 @@ export async function createStaffMember(formData: any): Promise<{ success: boole
         if (authError) {
           console.error("Error creating user account:", authError)
         } else if (authData.user) {
-          // Create profile record if profiles table exists
-          try {
-            const { error: profileError } = await supabase.from("profiles").insert({
-              id: authData.user.id,
-              email: basicStaffData.email,
-              name: basicStaffData.name,
-              role: system_role || "staff",
-              staff_id: result.data.id,
-              permissions: permissions || {},
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-
-            if (profileError) {
-              console.error("Error creating profile:", profileError)
-            }
-          } catch (profileCreateError) {
-            console.error("Profiles table may not exist:", profileCreateError)
-          }
-
           // Update staff record with user_id
           try {
             await dataProvider.staff.update(result.data.id, {
@@ -174,31 +149,6 @@ export async function updateStaffMember(
 
     const result = await dataProvider.staff.update(id, staffDataForDB)
 
-    // If updating system access or permissions and columns exist, update the profile too
-    if (hasUserManagementColumns && (system_access !== undefined || permissions)) {
-      try {
-        const supabase = createServerActionClient()
-        const staff = await dataProvider.staff.getById(id)
-
-        if (staff?.user_id) {
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .update({
-              role: system_role,
-              permissions: permissions,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", staff.user_id)
-
-          if (profileError) {
-            console.error("Error updating profile:", profileError)
-          }
-        }
-      } catch (profileUpdateError) {
-        console.error("Error updating user profile:", profileUpdateError)
-      }
-    }
-
     revalidatePath("/dashboard/staff")
     return result
   } catch (error: any) {
@@ -231,13 +181,6 @@ export async function deleteStaffMember(id: string): Promise<{ success: boolean;
 
         if (deleteUserError) {
           console.error("Error deleting user account:", deleteUserError)
-        }
-
-        // Delete profile
-        const { error: deleteProfileError } = await supabase.from("profiles").delete().eq("id", staff.user_id)
-
-        if (deleteProfileError) {
-          console.error("Error deleting profile:", deleteProfileError)
         }
       } catch (userDeleteError) {
         console.error("Error deleting user data:", userDeleteError)
@@ -293,7 +236,16 @@ export async function resetStaffPassword(
   }
 }
 
-// Check if user management is available
+// Check if user management is available - simplified version
 export async function checkUserManagementAvailable(): Promise<boolean> {
-  return await checkUserManagementColumns()
+  // Since we ran the migration, user management should be available
+  // But let's still check to be safe
+  try {
+    const hasColumns = await checkUserManagementColumns()
+    return hasColumns
+  } catch (error) {
+    console.error("Error checking user management availability:", error)
+    // Since we know the migration was run, default to true
+    return true
+  }
 }

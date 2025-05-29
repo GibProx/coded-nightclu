@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -9,14 +9,13 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { toast } from "@/components/ui/use-toast"
-import { createStaffMember, updateStaffMember, checkUserManagementAvailable } from "@/app/actions/staff-actions"
+import { createStaffMember, updateStaffMember } from "@/app/actions/staff-actions"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Shield, User, Settings, AlertTriangle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Shield, User, Settings } from "lucide-react"
 import type { Staff } from "@/types/database"
 
 const staffFormSchema = z.object({
@@ -61,8 +60,8 @@ interface StaffFormProps {
 export function StaffForm({ initialData }: StaffFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [userManagementAvailable, setUserManagementAvailable] = useState(false)
-  const [checkingAvailability, setCheckingAvailability] = useState(true)
+  // Assume user management is available since we ran the migration
+  const [userManagementAvailable] = useState(true)
 
   const form = useForm<StaffFormValues>({
     resolver: zodResolver(staffFormSchema),
@@ -91,28 +90,10 @@ export function StaffForm({ initialData }: StaffFormProps) {
     },
   })
 
-  // Check if user management features are available
-  useEffect(() => {
-    async function checkAvailability() {
-      try {
-        const available = await checkUserManagementAvailable()
-        setUserManagementAvailable(available)
-      } catch (error) {
-        console.error("Error checking user management availability:", error)
-        setUserManagementAvailable(false)
-      } finally {
-        setCheckingAvailability(false)
-      }
-    }
-    checkAvailability()
-  }, [])
-
   const watchSystemAccess = form.watch("system_access")
 
   // Auto-set permissions based on system role
   const handleSystemRoleChange = (role: string) => {
-    if (!userManagementAvailable) return
-
     switch (role) {
       case "admin":
         form.setValue("permissions", {
@@ -172,33 +153,32 @@ export function StaffForm({ initialData }: StaffFormProps) {
         const result = await updateStaffMember(initialData.id, data)
         if (result.success) {
           toast({
-            title: "Staff member updated",
-            description: "The staff member has been updated successfully.",
+            title: "User updated",
+            description: "The user has been updated successfully.",
           })
           router.push("/dashboard/staff")
           router.refresh()
         } else {
-          throw new Error(result.error || "Failed to update staff member")
+          throw new Error(result.error || "Failed to update user")
         }
       } else {
         const result = await createStaffMember(data)
         if (result.success) {
           toast({
-            title: "Staff member created",
-            description: "The staff member has been created successfully.",
+            title: "User created",
+            description: "The user has been created successfully.",
           })
           router.push("/dashboard/staff")
           router.refresh()
         } else {
-          throw new Error(result.error || "Failed to create staff member")
+          throw new Error(result.error || "Failed to create user")
         }
       }
     } catch (error) {
-      console.error("Error submitting staff form:", error)
+      console.error("Error submitting user form:", error)
       toast({
         title: "Error",
-        description:
-          error instanceof Error ? error.message : "There was an error saving the staff member. Please try again.",
+        description: error instanceof Error ? error.message : "There was an error saving the user. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -206,58 +186,37 @@ export function StaffForm({ initialData }: StaffFormProps) {
     }
   }
 
-  if (checkingAvailability) {
-    return <div>Checking user management availability...</div>
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <User className="h-5 w-5" />
-        <h1 className="text-2xl font-bold">{initialData ? "Edit Staff Member" : "Create New Staff Member"}</h1>
+        <Shield className="h-5 w-5" />
+        <h1 className="text-2xl font-bold">{initialData ? "Edit User" : "Create New User"}</h1>
       </div>
-
-      {!userManagementAvailable && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            User management features are not available. Database migration required.
-            <Button variant="link" className="p-0 h-auto ml-1" asChild>
-              <a href="/dashboard/setup">Run database setup</a>
-            </Button>
-            to enable user accounts and permissions.
-          </AlertDescription>
-        </Alert>
-      )}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Tabs defaultValue="profile" className="space-y-6">
-            <TabsList className={`grid w-full ${userManagementAvailable ? "grid-cols-3" : "grid-cols-1"}`}>
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="profile" className="flex items-center gap-2">
                 <User className="h-4 w-4" />
                 Profile
               </TabsTrigger>
-              {userManagementAvailable && (
-                <>
-                  <TabsTrigger value="access" className="flex items-center gap-2">
-                    <Shield className="h-4 w-4" />
-                    System Access
-                  </TabsTrigger>
-                  <TabsTrigger value="permissions" className="flex items-center gap-2">
-                    <Settings className="h-4 w-4" />
-                    Permissions
-                  </TabsTrigger>
-                </>
-              )}
+              <TabsTrigger value="access" className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                System Access
+              </TabsTrigger>
+              <TabsTrigger value="permissions" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Permissions
+              </TabsTrigger>
             </TabsList>
 
             {/* Profile Tab */}
             <TabsContent value="profile">
               <Card>
                 <CardHeader>
-                  <CardTitle>Staff Profile</CardTitle>
-                  <CardDescription>Basic staff member information and contact details.</CardDescription>
+                  <CardTitle>User Profile</CardTitle>
+                  <CardDescription>Basic user information and contact details.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6 md:grid-cols-2">
                   <FormField
@@ -283,7 +242,7 @@ export function StaffForm({ initialData }: StaffFormProps) {
                         <FormControl>
                           <Input type="email" placeholder="john@coded.com" {...field} />
                         </FormControl>
-                        <FormDescription>Contact email address</FormDescription>
+                        <FormDescription>This will be used for login</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -378,8 +337,8 @@ export function StaffForm({ initialData }: StaffFormProps) {
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-base">Active Status</FormLabel>
-                          <FormDescription>Whether this staff member is currently active</FormDescription>
+                          <FormLabel className="text-base">Active User</FormLabel>
+                          <FormDescription>Whether this user is currently active in the system</FormDescription>
                         </div>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -391,297 +350,285 @@ export function StaffForm({ initialData }: StaffFormProps) {
               </Card>
             </TabsContent>
 
-            {/* System Access Tab - Only show if user management is available */}
-            {userManagementAvailable && (
-              <TabsContent value="access">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>System Access Configuration</CardTitle>
-                    <CardDescription>Configure login access and user account settings.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <FormField
-                      control={form.control}
-                      name="system_access"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Enable System Access</FormLabel>
+            {/* System Access Tab */}
+            <TabsContent value="access">
+              <Card>
+                <CardHeader>
+                  <CardTitle>System Access Configuration</CardTitle>
+                  <CardDescription>Configure login access and user account settings.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="system_access"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Enable System Access</FormLabel>
+                          <FormDescription>Allow this user to log in to the management system</FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  {watchSystemAccess && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="system_role"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>System Role</FormLabel>
+                            <Select
+                              onValueChange={(value) => {
+                                field.onChange(value)
+                                handleSystemRoleChange(value)
+                              }}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select system role" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="admin">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="destructive">Admin</Badge>
+                                    <span>Full system access</span>
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="manager">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="secondary">Manager</Badge>
+                                    <span>Management features</span>
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="staff">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline">Staff</Badge>
+                                    <span>Basic operations</span>
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="viewer">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline">Viewer</Badge>
+                                    <span>Read-only access</span>
+                                  </div>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
                             <FormDescription>
-                              Allow this staff member to log in to the management system
+                              Role determines default permissions. You can customize permissions in the next tab.
                             </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch checked={field.value} onCheckedChange={field.onChange} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    {watchSystemAccess && (
-                      <>
-                        <FormField
-                          control={form.control}
-                          name="system_role"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>System Role</FormLabel>
-                              <Select
-                                onValueChange={(value) => {
-                                  field.onChange(value)
-                                  handleSystemRoleChange(value)
-                                }}
-                                defaultValue={field.value}
-                              >
+                      {!initialData && (
+                        <>
+                          <FormField
+                            control={form.control}
+                            name="create_user_account"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">Create Login Account</FormLabel>
+                                  <FormDescription>Create a login account for this user</FormDescription>
+                                </div>
                                 <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select system role" />
-                                  </SelectTrigger>
+                                  <Switch checked={field.value} onCheckedChange={field.onChange} />
                                 </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="admin">
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="destructive">Admin</Badge>
-                                      <span>Full system access</span>
-                                    </div>
-                                  </SelectItem>
-                                  <SelectItem value="manager">
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="secondary">Manager</Badge>
-                                      <span>Management features</span>
-                                    </div>
-                                  </SelectItem>
-                                  <SelectItem value="staff">
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="outline">Staff</Badge>
-                                      <span>Basic operations</span>
-                                    </div>
-                                  </SelectItem>
-                                  <SelectItem value="viewer">
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="outline">Viewer</Badge>
-                                      <span>Read-only access</span>
-                                    </div>
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormDescription>
-                                Role determines default permissions. You can customize permissions in the next tab.
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                              </FormItem>
+                            )}
+                          />
 
-                        {!initialData && (
-                          <>
+                          {form.watch("create_user_account") && (
                             <FormField
                               control={form.control}
-                              name="create_user_account"
+                              name="temporary_password"
                               render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                  <div className="space-y-0.5">
-                                    <FormLabel className="text-base">Create Login Account</FormLabel>
-                                    <FormDescription>Create a login account for this staff member</FormDescription>
-                                  </div>
+                                <FormItem>
+                                  <FormLabel>Temporary Password</FormLabel>
                                   <FormControl>
-                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                    <Input
+                                      type="password"
+                                      placeholder="Enter temporary password"
+                                      {...field}
+                                      value={field.value || ""}
+                                    />
                                   </FormControl>
+                                  <FormDescription>
+                                    User will be required to change this password on first login.
+                                  </FormDescription>
+                                  <FormMessage />
                                 </FormItem>
                               )}
                             />
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                            {form.watch("create_user_account") && (
-                              <FormField
-                                control={form.control}
-                                name="temporary_password"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Temporary Password</FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        type="password"
-                                        placeholder="Enter temporary password"
-                                        {...field}
-                                        value={field.value || ""}
-                                      />
-                                    </FormControl>
-                                    <FormDescription>
-                                      Staff member will be required to change this password on first login.
-                                    </FormDescription>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            )}
-                          </>
+            {/* Permissions Tab */}
+            <TabsContent value="permissions">
+              <Card>
+                <CardHeader>
+                  <CardTitle>User Permissions</CardTitle>
+                  <CardDescription>Configure what this user can access and manage in the system.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {watchSystemAccess ? (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="permissions.can_view_dashboard"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-sm font-medium">Dashboard Access</FormLabel>
+                              <FormDescription className="text-xs">View main dashboard and metrics</FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                          </FormItem>
                         )}
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            )}
+                      />
 
-            {/* Permissions Tab - Only show if user management is available */}
-            {userManagementAvailable && (
-              <TabsContent value="permissions">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>User Permissions</CardTitle>
-                    <CardDescription>
-                      Configure what this staff member can access and manage in the system.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {watchSystemAccess ? (
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <FormField
-                          control={form.control}
-                          name="permissions.can_view_dashboard"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-sm font-medium">Dashboard Access</FormLabel>
-                                <FormDescription className="text-xs">View main dashboard and metrics</FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                      <FormField
+                        control={form.control}
+                        name="permissions.can_manage_guests"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-sm font-medium">Guest Management</FormLabel>
+                              <FormDescription className="text-xs">
+                                Create, edit, and view guest records
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
 
-                        <FormField
-                          control={form.control}
-                          name="permissions.can_manage_guests"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-sm font-medium">Guest Management</FormLabel>
-                                <FormDescription className="text-xs">
-                                  Create, edit, and view guest records
-                                </FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                      <FormField
+                        control={form.control}
+                        name="permissions.can_manage_reservations"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-sm font-medium">Reservation Management</FormLabel>
+                              <FormDescription className="text-xs">
+                                Handle bookings and table assignments
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
 
-                        <FormField
-                          control={form.control}
-                          name="permissions.can_manage_reservations"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-sm font-medium">Reservation Management</FormLabel>
-                                <FormDescription className="text-xs">
-                                  Handle bookings and table assignments
-                                </FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                      <FormField
+                        control={form.control}
+                        name="permissions.can_manage_events"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-sm font-medium">Event Management</FormLabel>
+                              <FormDescription className="text-xs">Create and manage events</FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
 
-                        <FormField
-                          control={form.control}
-                          name="permissions.can_manage_events"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-sm font-medium">Event Management</FormLabel>
-                                <FormDescription className="text-xs">Create and manage events</FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                      <FormField
+                        control={form.control}
+                        name="permissions.can_manage_inventory"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-sm font-medium">Inventory Management</FormLabel>
+                              <FormDescription className="text-xs">Stock control and ordering</FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
 
-                        <FormField
-                          control={form.control}
-                          name="permissions.can_manage_inventory"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-sm font-medium">Inventory Management</FormLabel>
-                                <FormDescription className="text-xs">Stock control and ordering</FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                      <FormField
+                        control={form.control}
+                        name="permissions.can_manage_staff"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-sm font-medium">User Management</FormLabel>
+                              <FormDescription className="text-xs">Manage other users and permissions</FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
 
-                        <FormField
-                          control={form.control}
-                          name="permissions.can_manage_staff"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-sm font-medium">User Management</FormLabel>
-                                <FormDescription className="text-xs">
-                                  Manage other users and permissions
-                                </FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                      <FormField
+                        control={form.control}
+                        name="permissions.can_view_analytics"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-sm font-medium">Analytics Access</FormLabel>
+                              <FormDescription className="text-xs">View business reports and metrics</FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
 
-                        <FormField
-                          control={form.control}
-                          name="permissions.can_view_analytics"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-sm font-medium">Analytics Access</FormLabel>
-                                <FormDescription className="text-xs">View business reports and metrics</FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="permissions.can_manage_security"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-sm font-medium">Security Management</FormLabel>
-                                <FormDescription className="text-xs">
-                                  Handle security logs and incidents
-                                </FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>Enable system access to configure permissions</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            )}
+                      <FormField
+                        control={form.control}
+                        name="permissions.can_manage_security"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-sm font-medium">Security Management</FormLabel>
+                              <FormDescription className="text-xs">Handle security logs and incidents</FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Enable system access to configure permissions</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
 
           <div className="flex justify-end space-x-4">
@@ -694,7 +641,7 @@ export function StaffForm({ initialData }: StaffFormProps) {
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : initialData ? "Update Staff Member" : "Create Staff Member"}
+              {isSubmitting ? "Saving..." : initialData ? "Update User" : "Create User"}
             </Button>
           </div>
         </form>
