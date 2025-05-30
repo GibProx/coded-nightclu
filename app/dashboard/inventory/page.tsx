@@ -9,6 +9,9 @@ import { InventoryTable } from "@/components/dashboard/inventory-table"
 import { Suspense } from "react"
 import { ErrorBoundary } from "@/components/ui/error-boundary"
 
+// Force dynamic rendering
+export const dynamic = "force-dynamic"
+
 export default async function InventoryPage() {
   return (
     <DashboardShell>
@@ -114,11 +117,21 @@ export default async function InventoryPage() {
 }
 
 async function AllInventoryItems() {
-  const inventoryItems = await getInventoryItems()
-  return <InventoryTable inventory={inventoryItems} />
+  try {
+    const inventoryItems = await getInventoryItems()
+    return <InventoryTable inventory={inventoryItems} />
+  } catch (error) {
+    console.error("Error loading inventory items:", error)
+    return <div className="text-center py-4 text-muted-foreground">No inventory items found.</div>
+  }
 }
 
 async function CategoryInventoryItems({ category }: { category: string }) {
-  const inventoryItems = await getInventoryByCategory(category)
-  return <InventoryTable inventory={inventoryItems} />
+  try {
+    const inventoryItems = await getInventoryByCategory(category)
+    return <InventoryTable inventory={inventoryItems} />
+  } catch (error) {
+    console.error(`Error loading ${category} inventory:`, error)
+    return <div className="text-center py-4 text-muted-foreground">No {category.toLowerCase()} items found.</div>
+  }
 }

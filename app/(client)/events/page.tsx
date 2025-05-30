@@ -6,10 +6,16 @@ import { Badge } from "@/components/ui/badge"
 import { CalendarDays, Clock, MapPin } from "lucide-react"
 import { createServerActionClient } from "@/lib/supabase/server"
 
-export const revalidate = 3600 // Revalidate this page every hour
+export const dynamic = "force-dynamic"
 
 async function getEvents() {
   const supabase = createServerActionClient()
+
+  // Handle case where Supabase client is null (missing env vars)
+  if (!supabase) {
+    console.warn("Supabase client not available, returning empty events array")
+    return []
+  }
 
   const { data, error } = await supabase.from("events").select("*").order("date", { ascending: true })
 

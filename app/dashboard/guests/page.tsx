@@ -10,6 +10,9 @@ import Link from "next/link"
 import { Suspense } from "react"
 import { Loading } from "@/components/ui/loading"
 
+// Force dynamic rendering
+export const dynamic = "force-dynamic"
+
 export const metadata = {
   title: "Guest Management",
   description: "Manage guest information and preferences",
@@ -81,16 +84,31 @@ export default function GuestsPage() {
 }
 
 async function AllGuestsTable() {
-  const guests = await getGuests()
-  return <GuestTable guests={Array.isArray(guests) ? guests : []} />
+  try {
+    const guests = await getGuests()
+    return <GuestTable guests={Array.isArray(guests) ? guests : []} />
+  } catch (error) {
+    console.error("Error loading all guests:", error)
+    return <GuestTable guests={[]} />
+  }
 }
 
 async function VipGuestsTable() {
-  const guests = await getGuestsByStatus("VIP")
-  return <GuestTable guests={Array.isArray(guests) ? guests : []} />
+  try {
+    const guests = await getGuestsByStatus("VIP")
+    return <GuestTable guests={Array.isArray(guests) ? guests : []} />
+  } catch (error) {
+    console.error("Error loading VIP guests:", error)
+    return <GuestTable guests={[]} />
+  }
 }
 
 async function RegularGuestsTable() {
-  const guests = await getGuestsByStatus("Regular")
-  return <GuestTable guests={Array.isArray(guests) ? guests : []} />
+  try {
+    const guests = await getGuestsByStatus("Regular")
+    return <GuestTable guests={Array.isArray(guests) ? guests : []} />
+  } catch (error) {
+    console.error("Error loading regular guests:", error)
+    return <GuestTable guests={[]} />
+  }
 }

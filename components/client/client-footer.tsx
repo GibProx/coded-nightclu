@@ -1,3 +1,6 @@
+"use client"
+
+import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { Icons } from "@/components/icons"
 import { Button } from "@/components/ui/button"
@@ -5,6 +8,25 @@ import { Input } from "@/components/ui/input"
 import { Facebook, Instagram, Twitter } from "lucide-react"
 
 export function ClientFooter() {
+  const pathname = usePathname()
+
+  // Don't render footer on admin pages
+  const isAdminPage =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/guests") ||
+    pathname.startsWith("/staff") ||
+    pathname.startsWith("/inventory") ||
+    pathname.startsWith("/payments") ||
+    pathname.startsWith("/ticketing") ||
+    pathname.startsWith("/security") ||
+    pathname.startsWith("/settings") ||
+    (pathname.startsWith("/reservations") && pathname.includes("admin"))
+
+  if (isAdminPage) {
+    return null
+  }
+
   return (
     <footer className="bg-background border-t">
       <div className="container py-12 md:py-16">
@@ -19,19 +41,14 @@ export function ClientFooter() {
             </p>
             <div className="flex space-x-4">
               <Button variant="ghost" size="icon" asChild>
-                <Link href="https://instagram.com" target="_blank" rel="noreferrer">
+                <Link href="https://www.instagram.com/codedbirmingham?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" target="_blank" rel="noreferrer">
                   <Instagram className="h-5 w-5" />
                   <span className="sr-only">Instagram</span>
                 </Link>
               </Button>
+             
               <Button variant="ghost" size="icon" asChild>
-                <Link href="https://twitter.com" target="_blank" rel="noreferrer">
-                  <Twitter className="h-5 w-5" />
-                  <span className="sr-only">Twitter</span>
-                </Link>
-              </Button>
-              <Button variant="ghost" size="icon" asChild>
-                <Link href="https://facebook.com" target="_blank" rel="noreferrer">
+                <Link href="https://www.facebook.com/people/Coded-Birmingham/61569308367526/?ref=_ig_profile_ac" target="_blank" rel="noreferrer">
                   <Facebook className="h-5 w-5" />
                   <span className="sr-only">Facebook</span>
                 </Link>
@@ -52,11 +69,7 @@ export function ClientFooter() {
                   Table Reservations
                 </Link>
               </li>
-              <li>
-                <Link href="/tickets" className="text-muted-foreground hover:text-primary">
-                  Buy Tickets
-                </Link>
-              </li>
+            
               <li>
                 <Link href="/gallery" className="text-muted-foreground hover:text-primary">
                   Gallery
@@ -91,18 +104,7 @@ export function ClientFooter() {
             </ul>
           </div>
 
-          <div>
-            <h3 className="text-sm font-medium mb-4">Subscribe</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Subscribe to our newsletter for exclusive offers and updates.
-            </p>
-            <form className="space-y-2">
-              <Input placeholder="Your email" type="email" />
-              <Button type="submit" className="w-full">
-                Subscribe
-              </Button>
-            </form>
-          </div>
+         
         </div>
 
         <div className="border-t mt-12 pt-6 text-center text-sm text-muted-foreground">

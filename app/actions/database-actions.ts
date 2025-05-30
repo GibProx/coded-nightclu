@@ -22,3 +22,8 @@ export async function executeSql(sqlString: string) {
     return { success: false, error: error.message }
   }
 }
+
+// Add the missing setupDatabase export
+export async function setupDatabase(sqlString: string) {
+  return executeSql(sqlString)
+}

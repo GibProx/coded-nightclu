@@ -22,9 +22,9 @@ export default function HomePage() {
 
       <FeaturedEvents />
 
-      <section className="py-16 bg-primary/10">
+      {/* <section className="py-16 bg-primary/10">
         <ContactSection />
-      </section>
+      </section> */}
     </>
   )
 }

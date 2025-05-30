@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { Button } from "@/components/ui/button"

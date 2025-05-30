@@ -182,21 +182,6 @@ export default async function EventPage({ params }: { params: { id: string } }) 
                       {event.long_description || event.description}
                     </div>
                   </div>
-
-                  {event.external_ticketing && event.fatsoma_url && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <ExternalLink className="h-4 w-4 text-green-600" />
-                        <h3 className="font-medium text-green-800">Tickets Available on Fatsoma</h3>
-                      </div>
-                      <p className="text-green-700 text-sm mb-3">
-                        Secure your tickets through our trusted partner Fatsoma for the best booking experience.
-                      </p>
-                      <TicketButton fatsoma_url={event.fatsoma_url} className="bg-green-600 hover:bg-green-700">
-                        View on Fatsoma <ExternalLink className="ml-2 h-4 w-4" />
-                      </TicketButton>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             </TabsContent>

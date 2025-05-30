@@ -1,6 +1,6 @@
 import type React from "react"
 import Image from "next/image"
-import { AlertTriangle } from "lucide-react"
+import { AlertTriangle, FolderClosed } from "lucide-react"
 
 export const Icons = {
   logo: ({ className, ...props }: React.ComponentProps<"div">) => (
@@ -28,4 +28,5 @@ export const Icons = {
     </div>
   ),
   warning: AlertTriangle,
+  folderClosed: FolderClosed,
 }

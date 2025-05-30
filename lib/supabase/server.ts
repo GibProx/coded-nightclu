@@ -7,6 +7,11 @@ const FALLBACK_SUPABASE_SERVICE_KEY = "your-service-role-key"
 
 export function createServerActionClient() {
   try {
+    // Check if we're in a build environment
+    if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV === "preview") {
+      return null
+    }
+
     const cookieStore = cookies()
 
     // Use environment variables if available, otherwise use fallbacks
@@ -50,3 +55,6 @@ export function createServerActionClient() {
     return null
   }
 }
+
+// Add the missing createServerClient export
+export { createServerClient } from "@supabase/ssr"

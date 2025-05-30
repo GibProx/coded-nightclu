@@ -9,18 +9,10 @@ import { SecurityLogTable } from "@/components/dashboard/security-log-table"
 import { getSecurityLogs, getSecurityLogsByStatus } from "@/app/actions/security-actions"
 import { Plus } from "lucide-react"
 
+// Force dynamic rendering
+export const dynamic = "force-dynamic"
+
 export default async function SecurityPage() {
-  // Fetch security logs
-  const allLogsResult = await getSecurityLogs()
-  const pendingLogsResult = await getSecurityLogsByStatus("pending")
-  const inProgressLogsResult = await getSecurityLogsByStatus("in-progress")
-  const resolvedLogsResult = await getSecurityLogsByStatus("resolved")
-
-  const allLogs = allLogsResult.success ? allLogsResult.data : []
-  const pendingLogs = pendingLogsResult.success ? pendingLogsResult.data : []
-  const inProgressLogs = inProgressLogsResult.success ? inProgressLogsResult.data : []
-  const resolvedLogs = resolvedLogsResult.success ? resolvedLogsResult.data : []
-
   return (
     <DashboardShell>
       <DashboardHeader heading="Security Log" text="Monitor and manage security incidents">
@@ -35,9 +27,9 @@ export default async function SecurityPage() {
       <Tabs defaultValue="all" className="space-y-4">
         <TabsList className="w-full flex-wrap justify-start">
           <TabsTrigger value="all">All Incidents</TabsTrigger>
-          <TabsTrigger value="pending">Pending ({pendingLogs.length})</TabsTrigger>
-          <TabsTrigger value="in-progress">In Progress ({inProgressLogs.length})</TabsTrigger>
-          <TabsTrigger value="resolved">Resolved ({resolvedLogs.length})</TabsTrigger>
+          <TabsTrigger value="pending">Pending</TabsTrigger>
+          <TabsTrigger value="in-progress">In Progress</TabsTrigger>
+          <TabsTrigger value="resolved">Resolved</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="space-y-4">
@@ -48,7 +40,7 @@ export default async function SecurityPage() {
             </CardHeader>
             <CardContent>
               <Suspense fallback={<div>Loading security logs...</div>}>
-                <SecurityLogTable data={allLogs} />
+                <AllSecurityLogs />
               </Suspense>
             </CardContent>
           </Card>
@@ -62,7 +54,7 @@ export default async function SecurityPage() {
             </CardHeader>
             <CardContent>
               <Suspense fallback={<div>Loading pending incidents...</div>}>
-                <SecurityLogTable data={pendingLogs} />
+                <StatusSecurityLogs status="pending" />
               </Suspense>
             </CardContent>
           </Card>
@@ -76,7 +68,7 @@ export default async function SecurityPage() {
             </CardHeader>
             <CardContent>
               <Suspense fallback={<div>Loading in-progress incidents...</div>}>
-                <SecurityLogTable data={inProgressLogs} />
+                <StatusSecurityLogs status="in-progress" />
               </Suspense>
             </CardContent>
           </Card>
@@ -90,7 +82,7 @@ export default async function SecurityPage() {
             </CardHeader>
             <CardContent>
               <Suspense fallback={<div>Loading resolved incidents...</div>}>
-                <SecurityLogTable data={resolvedLogs} />
+                <StatusSecurityLogs status="resolved" />
               </Suspense>
             </CardContent>
           </Card>
@@ -98,4 +90,26 @@ export default async function SecurityPage() {
       </Tabs>
     </DashboardShell>
   )
+}
+
+async function AllSecurityLogs() {
+  try {
+    const result = await getSecurityLogs()
+    const logs = result.success ? result.data : []
+    return <SecurityLogTable data={logs} />
+  } catch (error) {
+    console.error("Error loading security logs:", error)
+    return <div className="text-center py-4 text-muted-foreground">No security logs found.</div>
+  }
+}
+
+async function StatusSecurityLogs({ status }: { status: string }) {
+  try {
+    const result = await getSecurityLogsByStatus(status)
+    const logs = result.success ? result.data : []
+    return <SecurityLogTable data={logs} />
+  } catch (error) {
+    console.error(`Error loading ${status} security logs:`, error)
+    return <div className="text-center py-4 text-muted-foreground">No {status} incidents found.</div>
+  }
 }

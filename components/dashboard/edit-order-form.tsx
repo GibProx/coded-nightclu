@@ -177,3 +177,6 @@ const EditOrderForm: React.FC<EditOrderFormProps> = ({ order, inventoryItems }) 
 }
 
 export default EditOrderForm
+
+// Add the missing named export
+export { EditOrderForm }

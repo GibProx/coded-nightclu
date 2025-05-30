@@ -10,6 +10,9 @@ import { Users, UserPlus, Shield, Eye, Settings, AlertTriangle } from "lucide-re
 import Link from "next/link"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
+// Force dynamic rendering to prevent static generation issues
+export const dynamic = "force-dynamic"
+
 async function StaffContent() {
   try {
     const staff = await getStaffMembers()
